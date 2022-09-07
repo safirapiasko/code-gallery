@@ -16,9 +16,9 @@ subsection Space discretization
   # In this subsection we declare the data that is relevant to the space discretization
   # we set the number of global refines the triangulation must have
   # and the degree k of the pair Q_(k+1)--Q_k of velocity--pressure finite element spaces
-  set n_of_refines = 4
-  set max_loc_refinements = 3
-  set min_loc_refinements = 1
+  set n_of_refines = 3
+  set max_loc_refinements = 5
+  set min_loc_refinements = 3
 end
 
 subsection Data solve
@@ -30,7 +30,7 @@ end
 
 set saving directory = SimTest
 
-set refinement_iterations = 0
+set refinement_iterations = 5900
 
 #The output frequency
 set output_interval = 500
