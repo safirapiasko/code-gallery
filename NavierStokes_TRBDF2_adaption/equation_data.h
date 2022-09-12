@@ -80,4 +80,26 @@ namespace EquationData {
     return 22.0 - p(0);
   }
 
+  // Viscosity class definition
+  template<int dim>
+  class Viscosity: public Function<dim> {
+  public:
+    Viscosity(const double initial_time = 0.0);
+
+    virtual double value(const Point<dim>&  p,
+                         const unsigned int component = 0) const override;
+  };
+
+
+  template<int dim>
+  Viscosity<dim>::Viscosity(const double initial_time): Function<dim>(1, initial_time) {}
+
+
+  template<int dim>
+  double Viscosity<dim>::value(const Point<dim>& p, const unsigned int component) const {
+    AssertIndexRange(component, 1);
+    
+    return 1;
+  }
+
 } // namespace EquationData
