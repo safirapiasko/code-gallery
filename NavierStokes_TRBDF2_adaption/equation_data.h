@@ -86,8 +86,7 @@ namespace EquationData {
   public:
     Viscosity(const double initial_time = 0.0);
 
-    virtual double value(const Point<dim>&  p,
-                         const unsigned int component = 0) const override;
+    virtual double value(const Point<dim>&  p, const unsigned int component = 0) const override;
   };
 
 
@@ -97,9 +96,10 @@ namespace EquationData {
 
   template<int dim>
   double Viscosity<dim>::value(const Point<dim>& p, const unsigned int component) const {
-    AssertIndexRange(component, 1);
+    // (void)component;
+    // AssertIndexRange(component, 1);
     
-    return 1;
+    return 1.;
   }
 
 } // namespace EquationData

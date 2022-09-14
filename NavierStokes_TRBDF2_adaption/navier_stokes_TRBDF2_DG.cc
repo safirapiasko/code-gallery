@@ -496,7 +496,16 @@ namespace NS_TRBDF2 {
 
           phi.submit_value(1.0/(gamma*dt)*u_n, q); /*--- 'submit_value' contains quantites that we want to test against the
                                                           test function ---*/
-          phi.submit_gradient(-a21/Re*viscosity.value(q)*grad_u_n + a21*tensor_product_u_n + p_n_times_identity, q);
+          // phi.submit_gradient(-a21/Re*grad_u_n + a21*tensor_product_u_n + p_n_times_identity, q);
+
+          const auto& point_vectorized   = phi.quadrature_point(q);
+          Point<dim> point;
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized[d][0];
+          
+          
+          phi.submit_gradient(-a21/Re*viscosity.value(point)*grad_u_n + a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -535,9 +544,18 @@ namespace NS_TRBDF2 {
           for(unsigned int d = 0; d < dim; ++d)
             p_n_times_identity[d][d] = p_n;
 
+          const auto& point_vectorized   = phi.quadrature_point(q);
+          Point<dim> point;
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized[d][0];
+
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma, q);
           phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-                              a32/Re*viscosity.value(q)*grad_u_n_gamma - a31/Re*viscosity.value(q)*grad_u_n + p_n_times_identity, q);
+                             a32/Re*viscosity.value(point)*grad_u_n_gamma - a31/Re*viscosity.value(point)*grad_u_n + p_n_times_identity, q);
+        
+          // phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
+          //                       a32/Re*grad_u_n_gamma - a31/Re*grad_u_n + p_n_times_identity, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -593,9 +611,24 @@ namespace NS_TRBDF2 {
           const auto& avg_tensor_product_u_n = 0.5*(outer_product(phi_old_p.get_value(q), phi_old_extr_p.get_value(q)) +
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
+          
+          const auto& point_vectorized_p   = phi_p.quadrature_point(q);
+          Point<dim> point;
 
-          phi_p.submit_value((a21/Re*viscosity.value(q)*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
-          phi_m.submit_value(-(a21/Re*viscosity.value(q)*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized_p[d][0];
+
+          phi_p.submit_value((a21/Re*viscosity.value(point)*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
+          
+          const auto& point_vectorized_m   = phi_m.quadrature_point(q);
+          
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized_m[d][0];
+
+          phi_m.submit_value(-(a21/Re*viscosity.value(point)*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
+          // phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
+          // phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
+
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -641,10 +674,27 @@ namespace NS_TRBDF2 {
                                                           outer_product(phi_int_m.get_value(q), phi_int_m.get_value(q)));
           const auto& avg_p_old                    = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          phi_p.submit_value((a31/Re*viscosity.value(q)*avg_grad_u_old + a32/Re*viscosity.value(q)*avg_grad_u_int -
-                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
-          phi_m.submit_value(-(a31/Re*viscosity.value(q)*avg_grad_u_old + a32/Re*viscosity.value(q)*avg_grad_u_int -
-                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
+          const auto& point_vectorized_p   = phi_p.quadrature_point(q);
+          Point<dim> point;
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized_p[d][0];
+
+          phi_p.submit_value((a31/Re*viscosity.value(point)*avg_grad_u_old + a32/Re*viscosity.value(point)*avg_grad_u_int -
+                             a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
+
+          const auto& point_vectorized_m   = phi_m.quadrature_point(q);
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized_m[d][0];
+
+          phi_m.submit_value(-(a31/Re*viscosity.value(point)*avg_grad_u_old + a32/Re*viscosity.value(point)*avg_grad_u_int -
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
+          // phi_p.submit_value((a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
+          //                     a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
+          // phi_m.submit_value(-(a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
+          //                      a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
+
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -706,11 +756,23 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
           const auto lambda                 = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-          phi.submit_value((a21/Re*viscosity.value(q)*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
-                           a22/Re*viscosity.value(q)*2.0*coef_jump*u_int_m -
-                           aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
-          phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*viscosity.value(q)*u_int_m, q); /*--- This is equivalent to multiply to the gradient
-                                                                                    with outer product and use 'submit_gradient' ---*/
+          Point<dim> point;
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized[d][0];
+
+          phi.submit_value((a21/Re*viscosity.value(point)*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
+                          a22/Re*viscosity.value(point)*2.0*coef_jump*u_int_m -
+                          aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
+          phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*viscosity.value(point)*u_int_m, q); /*--- This is equivalent to multiply to the gradient
+                                                                                   with outer product and use 'submit_gradient' ---*/
+
+          // phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
+          //                  a22/Re*2.0*coef_jump*u_int_m -
+          //                  aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
+          // phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*u_int_m, q); /*--- This is equivalent to multiply to the gradient
+          //                                                                           with outer product and use 'submit_gradient' ---*/
+
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -762,11 +824,23 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
           const auto lambda             = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
-          phi.submit_value((a31/Re*viscosity.value(q)*grad_u_old + a32/Re*viscosity.value(q)*grad_u_int -
-                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
-                           a33/Re*viscosity.value(q)*2.0*coef_jump*u_m -
-                           aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m, q);
-          phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*viscosity.value(q)*u_m, q);
+          Point<dim> point;
+
+          for(unsigned int d = 0; d < dim; ++d)
+            point[d] = point_vectorized[d][0];
+          
+          phi.submit_value((a31/Re*viscosity.value(point)*grad_u_old + a32/Re*viscosity.value(point)*grad_u_int -
+                          a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
+                          a33/Re*viscosity.value(point)*2.0*coef_jump*u_m -
+                          aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m, q);
+          phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*viscosity.value(point)*u_m, q);
+
+          // phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
+          //                  a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
+          //                  a33/Re*2.0*coef_jump*u_m -
+          //                  aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m, q);
+          // phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*u_m, q);
+
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
