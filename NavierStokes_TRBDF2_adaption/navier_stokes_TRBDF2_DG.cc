@@ -504,7 +504,6 @@ namespace NS_TRBDF2 {
           for(unsigned int d = 0; d < dim; ++d)
             point[d] = point_vectorized[d][0];
           
-          
           phi.submit_gradient(-a21/Re*viscosity.value(point)*grad_u_n + a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
         }
@@ -747,10 +746,14 @@ namespace NS_TRBDF2 {
               Point<dim> point; /*--- The point returned by the 'quadrature_point' function is not an instance of Point
                                       and so it is not ready to be directly used. We need to pay attention to the
                                       vectorization ---*/
-              for(unsigned int d = 0; d < dim; ++d)
+              for(unsigned int d = 0; d < dim; ++d){
                 point[d] = point_vectorized[d][v];
+              }
               for(unsigned int d = 0; d < dim; ++d)
                 u_int_m[d][v] = vel_boundary_inflow.value(point, d);
+
+              std::cout << point_vectorized[0][v] << " ";
+
             }
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
