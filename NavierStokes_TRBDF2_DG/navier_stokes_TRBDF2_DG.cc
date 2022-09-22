@@ -61,6 +61,8 @@
 
 #include <deal.II/meshworker/mesh_loop.h>
 
+#include <deal.II/fe/mapping_q.h>
+
 #include "runtime_parameters.h"
 #include "equation_data.h"
 
@@ -2316,7 +2318,7 @@ namespace NS_TRBDF2 {
 
     /*--- Initialize the matrix-free structure and size properly the vectors. Here again the
           second input argument of the 'initialize_dof_vector' method depends on the order of 'dof_handlers' ---*/
-    matrix_free_storage->reinit(MappingQ1<dim>(),dof_handlers, constraints, quadratures, additional_data);
+    matrix_free_storage->reinit(MappingQ1<dim>(), dof_handlers, constraints, quadratures, additional_data);
     matrix_free_storage->initialize_dof_vector(u_star, 0);
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
@@ -2362,7 +2364,7 @@ namespace NS_TRBDF2 {
       constraints_mg.push_back(&constraints_pressure_mg);
 
       std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-      mg_mf_storage_level->reinit(MappingQ1<dim>(),dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+      mg_mf_storage_level->reinit(MappingQ1<dim>(), dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
       const std::vector<unsigned int> tmp = {1};
       mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
       mg_matrices[level].set_dt(dt);
@@ -2616,7 +2618,8 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity, u_n, postprocessor);
 
-    data_out.build_patches(MappingQ1<dim>(), 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
+                           EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
     const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
@@ -2899,7 +2902,8 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity_tmp, u_n_tmp, postprocessor);
 
-    data_out.build_patches(MappingQ1<dim>(), 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
+			   EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
     const std::string output = "./" + saving_dir + "/solution_max_res_end.vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
   }
