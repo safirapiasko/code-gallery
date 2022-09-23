@@ -81,25 +81,57 @@ namespace EquationData {
   }
 
   // Viscosity class definition
-  template<int dim>
+  template<int dim, typename Number>
   class Viscosity: public Function<dim> {
+  private:
+    const double Cs_2 = 0.1 * 0.1;
   public:
+
     Viscosity(const double initial_time = 0.0);
 
-    virtual double value(const Point<dim>&  p, const unsigned int component = 0) const override;
+    double value(const Point<dim>&  p, const Tensor<dim, dim, const double>& sym_grad_u, const double& dx, const double& Re) const;
+
+    VectorizedArray<Number> value(const Point<dim, VectorizedArray<Number>>&  p, const SymmetricTensor<dim, dim, VectorizedArray<Number>>& sym_grad_u, const VectorizedArray<Number>& dx, const double& Re) const;
+
   };
 
 
-  template<int dim>
-  Viscosity<dim>::Viscosity(const double initial_time): Function<dim>(1, initial_time) {}
+  template<int dim, typename Number>
+  Viscosity<dim, Number>::Viscosity(const double initial_time): Function<dim>(1, initial_time) {}
 
 
-  template<int dim>
-  double Viscosity<dim>::value(const Point<dim>& p, const unsigned int component) const {
-    // (void)component;
-    // AssertIndexRange(component, 1);
-    
-    return 1.;
+  template<int dim, typename Number>
+  double Viscosity<dim, Number>::value(const Point<dim>&  p, const Tensor<dim, dim, const double>& sym_grad_u, const double& dx, const double& Re) const {
+
+    // subgrid viscosity
+    const double y_plus = 25.;
+    const double fd = 1 - exp(-y_plus / 25.);
+
+    double sgs_nu = Cs_2 * dx * dx * sqrt( 2 * sym_grad_u.norm());
+
+    return 1. / Re + sgs_nu;
+  }
+
+
+  template<int dim, typename Number>
+  VectorizedArray<Number> Viscosity<dim, Number>::value(const Point<dim, VectorizedArray<Number>>&  p, const SymmetricTensor<dim, dim, VectorizedArray<Number>>& sym_grad_u, const VectorizedArray<Number>& dx, const double& Re) const {
+
+    // subgrid viscosity
+    const double y_plus = 25.;
+    const double fd = 1 - exp(-y_plus / 25.);
+
+    auto viscosity = VectorizedArray<Number>();
+    auto tensor = Tensor<dim, dim, double>();
+
+    for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
+      for(unsigned int di = 0; di < dim; ++di)
+        for(unsigned int dj = 0; dj < dim; ++dj)
+          tensor[di][dj] = sym_grad_u[di][dj][v];
+
+      viscosity[v] = 1. / Re + Cs_2 * dx[v] * dx[v] * tensor.norm();
+    }
+
+    return viscosity;
   }
 
 } // namespace EquationData
