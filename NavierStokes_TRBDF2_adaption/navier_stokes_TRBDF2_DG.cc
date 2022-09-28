@@ -595,7 +595,7 @@ namespace NS_TRBDF2 {
                                                                        phi_old_extr_m(data, false, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press_p(data, true, 1),
                                                                        phi_old_press_m(data, false, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
                                                          phi_deltas_m(data, false, 2);
 
 
@@ -660,7 +660,7 @@ namespace NS_TRBDF2 {
                                                                        phi_int_m(data, false, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press_p(data, true, 1),
                                                                        phi_old_press_m(data, false, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
                                                          phi_deltas_m(data, false, 2);                                                                       
 
       /*--- We loop over the faces in the range ---*/
@@ -741,7 +741,7 @@ namespace NS_TRBDF2 {
                                                                        phi_old(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas(data, true, 2);
 
 
       /*--- We loop over the faces in the range ---*/
@@ -812,7 +812,7 @@ namespace NS_TRBDF2 {
                                                                        phi_int(data, true, 0),
                                                                        phi_int_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas(data, true, 2);
 
 
       /*--- We loop over the faces in the range ---*/
