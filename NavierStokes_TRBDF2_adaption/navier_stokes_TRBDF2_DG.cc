@@ -1160,7 +1160,7 @@ namespace NS_TRBDF2 {
           // const VectorizedArray<Number>& dx_m = phi_deltas_m.get_value(q);
           // const auto& point_vectorized_p   = phi_p.quadrature_point(q);
           // const auto& point_vectorized_m   = phi_m.quadrature_point(q);
-          const auto& avg_grad_u_int           = 0.5*(phi_p.get_gradient(q) + phi_m.get_gradient(q));
+          const auto& avg_grad_u_int           = phi_p.get_symmetric_gradient(q) + phi_m.get_symmetric_gradient(q);
 
           // const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) + 
           //                                        viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*phi_m.get_symmetric_gradient(q);
@@ -1216,7 +1216,7 @@ namespace NS_TRBDF2 {
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus               = phi_p.get_normal_vector(q);
-          const auto& avg_grad_u           = 0.5*(phi_p.get_gradient(q) + phi_m.get_gradient(q));
+          const auto& avg_grad_u           =  phi_p.get_symmetric_gradient(q) + phi_m.get_symmetric_gradient(q);
 
           // const VectorizedArray<Number>& dx_p = phi_deltas_p.get_value(q); 
           // const VectorizedArray<Number>& dx_m = phi_deltas_m.get_value(q);
