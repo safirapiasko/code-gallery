@@ -507,7 +507,7 @@ namespace NS_TRBDF2 {
           const auto& u_n_gamma_ov_2     = phi_old_extr.get_value(q);
           const auto& tensor_product_u_n = outer_product(u_n, u_n_gamma_ov_2);
           const auto& p_n                = phi_old_press.get_value(q);
-          const VectorizedArray<Number>& dx = phi_deltas.get_value(q);
+          const auto& dx = phi_deltas.get_value(q);
 
           auto p_n_times_identity        = tensor_product_u_n;
 
@@ -2549,6 +2549,20 @@ namespace NS_TRBDF2 {
     
     matrix_free_storage->initialize_dof_vector(deltas, 2);
 
+    // initialize delta calculation
+    for(const auto& cell: dof_handler_deltas.active_cell_iterators()) {
+      if(cell->is_locally_owned()) {
+        std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
+        cell->get_dof_indices(dof_indices);
+        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
+          deltas(dof_indices[idx]) = cell->diameter()/std::sqrt(dim);
+        }
+      }
+    }
+    
+    navier_stokes_matrix.set_deltas(deltas);
+
+
     /*--- Initialize the multigrid structure. We dedicate ad hoc 'dof_handlers_mg' and 'constraints_mg' because
           we use float as type. Moreover we can initialize already with the index of the finite element of the pressure;
           anyway we need by requirement to declare also structures for the velocity for coherence (basically because
@@ -2610,17 +2624,6 @@ namespace NS_TRBDF2 {
 
     VectorTools::interpolate(dof_handler_velocity, vel_init, u_n_minus_1);
     VectorTools::interpolate(dof_handler_velocity, vel_init, u_n);
-
-    // initialize delta calculation
-    for(const auto& cell: dof_handler_deltas.active_cell_iterators()) {
-      if(cell->is_locally_owned()) {
-        std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
-        cell->get_dof_indices(dof_indices);
-        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          deltas(dof_indices[idx]) = cell->diameter()/std::sqrt(dim);
-        }
-      }
-    }
   }
 
 
@@ -2658,8 +2661,6 @@ namespace NS_TRBDF2 {
 
     /*--- Next, we specify at we are at stage 1, namely the diffusion step ---*/
     navier_stokes_matrix.set_NS_stage(1);
-
-    navier_stokes_matrix.set_deltas(deltas);
 
     /*--- Now, we compute the right-hand side and we set the convective velocity. The necessity of 'set_u_extr' is
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
