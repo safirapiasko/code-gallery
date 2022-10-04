@@ -576,11 +576,11 @@ namespace NS_TRBDF2 {
             point[d] = point_vectorized[d][0];
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma, q);
-          phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma - a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
-        
           // phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-          //                       a32/Re*grad_u_n_gamma - a31/Re*grad_u_n + p_n_times_identity, q);
+          //                    a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma - a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
+        
+          phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
+                              a32/Re*grad_u_n_gamma - a31/Re*grad_u_n + p_n_times_identity, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -1293,10 +1293,10 @@ namespace NS_TRBDF2 {
             const auto& point_vectorized     = phi.quadrature_point(q);
             const VectorizedArray<Number>& dx = phi_deltas.get_value(q);
 
-            phi.submit_value(a22*(-viscosity.value(point_vectorized, grad_u_int, dx, Re) * grad_u_int*n_plus + 2.0*coef_jump*u_int) +
-                             a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
-            // phi.submit_value(a22/Re*(-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+            // phi.submit_value(a22*(-viscosity.value(point_vectorized, grad_u_int, dx, Re) * grad_u_int*n_plus + 2.0*coef_jump*u_int) +
             //                  a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
+            phi.submit_value(a22/Re*(-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+                             a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
             phi.submit_normal_derivative(-theta_v*a22/Re*u_int, q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
