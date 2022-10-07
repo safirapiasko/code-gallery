@@ -1138,7 +1138,7 @@ namespace NS_TRBDF2 {
           const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
                                         viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
-          phi_p.submit_value(a22*(-avg_visc_grad_u_int*n_plus + avg_vics * coef_jump*jump_u_int) +
+          phi_p.submit_value(a22*(-avg_visc_grad_u_int*n_plus + avg_visc * coef_jump*jump_u_int) +
                              a22*avg_tensor_product_u_int*n_plus + 0.5*a22*lambda*jump_u_int, q);
           phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  avg_visc * coef_jump*jump_u_int) -
                               a22*avg_tensor_product_u_int*n_plus - 0.5*a22*lambda*jump_u_int, q);
@@ -1184,7 +1184,6 @@ namespace NS_TRBDF2 {
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus               = phi_p.get_normal_vector(q);
-          const auto& avg_grad_u           =  phi_p.get_symmetric_gradient(q) + phi_m.get_symmetric_gradient(q);
 
           const auto& dx_p = phi_deltas_p.get_value(q); 
           const auto& dx_m = phi_deltas_m.get_value(q);
@@ -1368,8 +1367,8 @@ namespace NS_TRBDF2 {
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
-                                          viscosity.value(point_vectorized, grad_u_int_m, dx, Re));
+            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u, dx, Re) + 
+                                          viscosity.value(point_vectorized, grad_u_m, dx, Re));
 
             phi.submit_value(a33*(-(0.5*(viscosity.value(point_vectorized, grad_u, dx, Re)*grad_u + 
                               viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + avg_visc*coef_jump*(u - u_m)) +
