@@ -573,7 +573,8 @@ namespace NS_TRBDF2 {
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma, q);
           phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma - a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
+                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma - 
+                             a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
 
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1134,14 +1135,18 @@ namespace NS_TRBDF2 {
                                                       outer_product(phi_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto  lambda                   = std::max(std::abs(scalar_product(phi_old_extr_p.get_value(q), n_plus)),
                                                           std::abs(scalar_product(phi_old_extr_m.get_value(q), n_plus)));
+          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+                                        viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
-          phi_p.submit_value(a22*(-avg_visc_grad_u_int*n_plus + 1./ Re * coef_jump*jump_u_int) +
+          phi_p.submit_value(a22*(-avg_visc_grad_u_int*n_plus + avg_vics * coef_jump*jump_u_int) +
                              a22*avg_tensor_product_u_int*n_plus + 0.5*a22*lambda*jump_u_int, q);
-          phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  1./ Re * coef_jump*jump_u_int) -
+          phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  avg_visc * coef_jump*jump_u_int) -
                               a22*avg_tensor_product_u_int*n_plus - 0.5*a22*lambda*jump_u_int, q);
 
-          phi_p.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
-          phi_m.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
+          phi_p.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+                            0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
+          phi_m.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+                            0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
 
         }
         phi_p.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1194,10 +1199,12 @@ namespace NS_TRBDF2 {
                                                   outer_product(phi_m.get_value(q), phi_extr_m.get_value(q)));
           const auto  lambda               = std::max(std::abs(scalar_product(phi_extr_p.get_value(q), n_plus)),
                                                       std::abs(scalar_product(phi_extr_m.get_value(q), n_plus)));
+          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+                                        viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
-          phi_p.submit_value(a33*(-avg_visc_grad_u*n_plus + 1./Re*coef_jump*jump_u) +
+          phi_p.submit_value(a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) +
                              a33*avg_tensor_product_u*n_plus + 0.5*a33*lambda*jump_u, q);
-          phi_m.submit_value(-a33*(-avg_visc_grad_u*n_plus + 1./Re*coef_jump*jump_u) -
+          phi_m.submit_value(-a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) -
                               a33*avg_tensor_product_u*n_plus - 0.5*a33*lambda*jump_u, q);
 
           phi_p.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*0.5*(outer_product(jump_u,n_plus) + outer_product(n_plus,jump_u)), q);
@@ -1254,7 +1261,7 @@ namespace NS_TRBDF2 {
             const auto& point_vectorized     = phi.quadrature_point(q);
             const auto& dx = phi_deltas.get_value(q);
 
-            phi.submit_value(a22*(-viscosity.value(point_vectorized, grad_u_int, dx, Re) * grad_u_int*n_plus + 2.0/Re*coef_jump*u_int) +
+            phi.submit_value(a22*viscosity.value(point_vectorized, grad_u_int, dx, Re) * (-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
                              a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
 
             phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*(outer_product(u_int, n_plus)+ outer_product(n_plus, u_int)), q);
@@ -1283,9 +1290,12 @@ namespace NS_TRBDF2 {
               grad_u_int_m[0][0][v] = -grad_u_int_m[0][0][v];
               grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
             }
+
+            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
+                                          viscosity.value(point_vectorized, grad_u_int_m, dx, Re));
             
             phi.submit_value(a22*(-(0.5*(grad_u_int*viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
-                              grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus + 1./Re*coef_jump*(u_int - u_int_m)) +
+                              grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus + avg_visc*coef_jump*(u_int - u_int_m)) +
                              a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
                              a22*0.5*lambda*(u_int - u_int_m), q);
             phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*(outer_product(u_int - u_int_m, n_plus)+outer_product(n_plus, u_int - u_int_m)), q);
@@ -1328,7 +1338,7 @@ namespace NS_TRBDF2 {
             const auto& point_vectorized     = phi.quadrature_point(q);
             const auto& dx = phi_deltas.get_value(q);
 
-            phi.submit_value(a33*(-viscosity.value(point_vectorized, grad_u, dx, Re)*grad_u*n_plus + 2.0/Re*coef_jump*u) +
+            phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                              a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
             phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u, n_plus) + 
                              outer_product(n_plus, u)), q);
@@ -1358,11 +1368,11 @@ namespace NS_TRBDF2 {
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
-            phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
-                             a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + a33*0.5*lambda*(u - u_m), q);
+            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
+                                          viscosity.value(point_vectorized, grad_u_int_m, dx, Re));
 
             phi.submit_value(a33*(-(0.5*(viscosity.value(point_vectorized, grad_u, dx, Re)*grad_u + 
-                              viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + 1./Re*coef_jump*(u - u_m)) +
+                              viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + avg_visc*coef_jump*(u - u_m)) +
                              a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + a33*0.5*lambda*(u - u_m), q);
             phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u-u_m, n_plus)+ outer_product(n_plus, u - u_m)), q);
           }
