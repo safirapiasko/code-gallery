@@ -711,7 +711,7 @@ namespace NS_TRBDF2 {
 
           
           phi_p.submit_value((a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
-                             a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
           phi_m.submit_value(-(a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
         }
@@ -785,8 +785,8 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
           const auto lambda                 = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-          phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
-                          a22*2.0 / Re *coef_jump*u_int_m -
+          phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus - 
+                          p_old*n_plus + a22*2.0 * viscosity.value(point_vectorized, grad_u_old, dx, Re) *coef_jump*u_int_m -
                           aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
           phi.submit_gradient(-aux_coeff*theta_v*a22*viscosity.value(point_vectorized, grad_u_old, dx, Re)*(outer_product(u_int_m, n_plus)+outer_product(n_plus, u_int_m)), q);
         }
@@ -1290,12 +1290,10 @@ namespace NS_TRBDF2 {
               grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
             }
 
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
-                                          viscosity.value(point_vectorized, grad_u_int_m, dx, Re));
+            const auto& visc = viscosity.value(point_vectorized, grad_u_int, dx, Re);
             
-            phi.submit_value(a22*(-(0.5*(grad_u_int*viscosity.value(point_vectorized, grad_u_int, dx, Re) + 
-                              grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus + avg_visc*coef_jump*(u_int - u_int_m)) +
-                             a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
+            phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus +
+                             visc*coef_jump*(u_int - u_int_m)) + a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
                              a22*0.5*lambda*(u_int - u_int_m), q);
             phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*(outer_product(u_int - u_int_m, n_plus)+outer_product(n_plus, u_int - u_int_m)), q);
           }
@@ -1367,12 +1365,11 @@ namespace NS_TRBDF2 {
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized, grad_u, dx, Re) + 
-                                          viscosity.value(point_vectorized, grad_u_m, dx, Re));
+            const auto& visc = 0.5 * (viscosity.value(point_vectorized, grad_u, dx, Re);
 
-            phi.submit_value(a33*(-(0.5*(viscosity.value(point_vectorized, grad_u, dx, Re)*grad_u + 
-                              viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + avg_visc*coef_jump*(u - u_m)) +
-                             a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + a33*0.5*lambda*(u - u_m), q);
+            phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + 
+                             visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + 
+                             a33*0.5*lambda*(u - u_m), q);
             phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u-u_m, n_plus)+ outer_product(n_plus, u - u_m)), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
