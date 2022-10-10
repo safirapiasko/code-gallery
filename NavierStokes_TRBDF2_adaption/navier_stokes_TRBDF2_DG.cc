@@ -1365,7 +1365,7 @@ namespace NS_TRBDF2 {
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
-            const auto& visc = 0.5 * (viscosity.value(point_vectorized, grad_u, dx, Re);
+            const auto& visc = viscosity.value(point_vectorized, grad_u, dx, Re);
 
             phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + 
                              visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + 
@@ -2427,7 +2427,7 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::create_triangulation(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
 
-    GridGenerator::plate_with_a_hole(triangulation, 0.5, 1.0, 1.0, 1.1, 1.0, 19.0, Point<2>(2.0, 2.0), 0, 1, 1.0, 2, true);
+    GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
 
     pcout << "Number of refines = " << n_refines << std::endl;
@@ -2864,7 +2864,7 @@ namespace NS_TRBDF2 {
     for(const auto& cell : dof_handler_velocity.active_cell_iterators()) {
       if(cell->is_locally_owned()) {
         for(unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell; ++face) {
-          if(cell->face(face)->at_boundary() && cell->face(face)->boundary_id() == 4) {
+          if(cell->face(face)->at_boundary() && cell->face(face)->boundary_id() == 2) {
             fe_face_values_velocity.reinit(cell, face);
             fe_face_values_pressure.reinit(tmp_cell, face);
 
