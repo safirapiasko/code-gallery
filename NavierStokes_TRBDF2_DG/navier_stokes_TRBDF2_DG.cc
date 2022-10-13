@@ -242,6 +242,8 @@ namespace NS_TRBDF2 {
 
     void set_dt(const double time_step);
 
+    void set_Reynolds(const double reynolds);
+
     void set_TR_BDF2_stage(const unsigned int stage);
 
     void set_NS_stage(const unsigned int stage);
@@ -2173,7 +2175,12 @@ namespace NS_TRBDF2 {
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
 
-    std::string saving_dir;
+    std::string  saving_dir;
+
+    bool         restart,
+                 save_for_restart;
+    unsigned int step_restart;
+    double       time_restart;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2220,6 +2227,10 @@ namespace NS_TRBDF2 {
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
     saving_dir(data.dir),
+    restart(data.restart),
+    save_for_restart(data.save_for_restart),
+    step_restart(data.step_restart),
+    time_restart(data.time_restart),
     pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
     time_out("./" + data.dir + "/time_analysis_" +
              Utilities::int_to_string(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)) + "proc.dat"),
@@ -2256,8 +2267,13 @@ namespace NS_TRBDF2 {
     GridGenerator::plate_with_a_hole(triangulation, 0.5, 1.0, 1.0, 1.1, 1.0, 19.0, Point<2>(2.0, 2.0), 0, 1, 1.0, 2, true);
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
 
-    pcout << "Number of refines = " << n_refines << std::endl;
-    triangulation.refine_global(n_refines);
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
   }
 
 
@@ -2382,10 +2398,29 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::initialize() {
     TimerOutput::Scope t(time_table, "Initialize pressure and velocity");
 
-    VectorTools::interpolate(dof_handler_pressure, pres_init, pres_n);
+    if(restart) {
+      parallel::distributed::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>
+      solution_transfer_velocity(dof_handler_velocity);
+      parallel::distributed::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>
+      solution_transfer_pressure(dof_handler_pressure);
 
-    VectorTools::interpolate(dof_handler_velocity, vel_init, u_n_minus_1);
-    VectorTools::interpolate(dof_handler_velocity, vel_init, u_n);
+      u_n.zero_out_ghost_values();
+      u_n_minus_1.zero_out_ghost_values();
+      pres_n.zero_out_ghost_values();
+
+      std::vector<LinearAlgebra::distributed::Vector<double>*> velocities;
+      velocities.push_back(&u_n);
+      velocities.push_back(&u_n_minus_1);
+
+      solution_transfer_velocity.deserialize(velocities);
+      solution_transfer_pressure.deserialize(pres_n);
+    }
+    else {
+      VectorTools::interpolate(dof_handler_pressure, pres_init, pres_n);
+
+      VectorTools::interpolate(dof_handler_velocity, vel_init, u_n_minus_1);
+      VectorTools::interpolate(dof_handler_velocity, vel_init, u_n);
+    }
   }
 
 
@@ -2623,6 +2658,26 @@ namespace NS_TRBDF2 {
 
     const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
+
+    /*--- Serialization ---*/
+    if(save_for_restart) {
+      parallel::distributed::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>
+      solution_transfer_velocity(dof_handler_velocity);
+      parallel::distributed::SolutionTransfer<dim, LinearAlgebra::distributed::Vector<double>>
+      solution_transfer_pressure(dof_handler_pressure);
+
+      u_n.update_ghost_values();
+      u_n_minus_1.update_ghost_values();
+      pres_n.update_ghost_values();
+
+      std::vector<const LinearAlgebra::distributed::Vector<double>*> velocities;
+      velocities.push_back(&u_n);
+      velocities.push_back(&u_n_minus_1);
+      solution_transfer_velocity.prepare_for_serialization(velocities);
+      solution_transfer_pressure.prepare_for_serialization(pres_n);
+
+      triangulation.save("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step, 5));
+    }
   }
 
 
@@ -2923,9 +2978,15 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
-    output_results(1);
     double time = t_0 + dt;
     unsigned int n = 1;
+    if(restart) {
+      n    = step_restart;
+      time = time_restart;
+    }
+    else {
+      output_results(1);
+    }
     while(std::abs(T - time) > 1e-10) {
       time += dt;
       n++;
