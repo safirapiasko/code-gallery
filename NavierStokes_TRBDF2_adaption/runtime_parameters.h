@@ -20,6 +20,7 @@ namespace RunTimeParameters {
     double final_time;
 
     double Reynolds;
+    double Cs2;
     double dt;
 
     unsigned int n_refines;            /*--- Number of refinements ---*/
@@ -37,6 +38,12 @@ namespace RunTimeParameters {
     std::string dir; /*--- Auxiliary string variable for output storage ---*/
 
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
+
+    bool         restart;
+    unsigned int step_restart;
+    double       time_restart;
+
+    bool         save_for_restart;
 
   protected:
     ParameterHandler prm;
@@ -70,6 +77,10 @@ namespace RunTimeParameters {
                         "1.0",
                         Patterns::Double(0.0),
                         " The Reynolds number. ");
+      prm.declare_entry("Cs2",
+                        "0.01",
+                        Patterns::Double(0.0),
+                        " The Smagorinsky coefficient. ");
     }
     prm.leave_subsection();
 
@@ -79,6 +90,10 @@ namespace RunTimeParameters {
                         "5e-4",
                         Patterns::Double(0.0),
                         " The time step size. ");
+      prm.declare_entry("time_restart",
+                        "5e-4",
+                        Patterns::Double(0.0),
+                        " The time of restart. ");
     }
     prm.leave_subsection();
 
@@ -109,6 +124,10 @@ namespace RunTimeParameters {
                         "1e-12",
                         Patterns::Double(0.0),
                         " The stopping criterion. ");
+      prm.declare_entry("step_restart",
+                        "1",
+                         Patterns::Integer(1, 100000000),
+                         " The step at which restart occurs");
     }
     prm.leave_subsection();
 
@@ -131,6 +150,18 @@ namespace RunTimeParameters {
                       Patterns::Integer(1),
                       " This indicates between how many time steps we print "
                       "the solution. ");
+
+    prm.declare_entry("restart",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether we are in presence of a "
+                      "restart or not. ");
+
+    prm.declare_entry("save_for_restart",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether we want to save for possible "
+                      "restart or not. ");
   }
 
   // We need now a routine to read all declared parameters in the constructor
@@ -146,12 +177,14 @@ namespace RunTimeParameters {
       initial_time = prm.get_double("initial_time");
       final_time   = prm.get_double("final_time");
       Reynolds     = prm.get_double("Reynolds");
+      Cs2          = prm.get_double("Cs2");
     }
     prm.leave_subsection();
 
     prm.enter_subsection("Time step data");
     {
-      dt = prm.get_double("dt");
+      dt           = prm.get_double("dt");
+      time_restart = prm.get_double("time_restart");
     }
     prm.leave_subsection();
 
@@ -167,6 +200,7 @@ namespace RunTimeParameters {
     {
       max_iterations = prm.get_integer("max_iterations");
       eps            = prm.get_double("eps");
+      step_restart   = prm.get_integer("step_restart");
     }
     prm.leave_subsection();
 
@@ -177,6 +211,10 @@ namespace RunTimeParameters {
     verbose = prm.get_bool("verbose");
 
     output_interval = prm.get_integer("output_interval");
+
+    restart = prm.get_bool("restart");
+
+    save_for_restart = prm.get_bool("save_for_restart");
   }
 
 } // namespace RunTimeParameters

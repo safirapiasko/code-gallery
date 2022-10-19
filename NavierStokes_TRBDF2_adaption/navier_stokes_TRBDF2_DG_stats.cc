@@ -403,7 +403,7 @@ namespace NS_TRBDF2 {
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(),
                                            vel_boundary_inflow(data.initial_time),
-                                           viscosity(data.initial_time) {}
+                                           viscosity(data.initial_time, data.Cs2) {}
 
 
   // Setter of time-step (called by Multigrid and in case a smaller time-step towards the end is needed)
@@ -2312,6 +2312,7 @@ namespace NS_TRBDF2 {
     const double gamma;         //--- TR-BDF2 parameter
     unsigned int TR_BDF2_stage; //--- Flag to check at which current stage of TR-BDF2 are
     const double Re;
+    const double Cs2;
     double       dt;
 
     EquationData::Velocity<dim> vel_init;
@@ -2487,6 +2488,7 @@ namespace NS_TRBDF2 {
     gamma(2.0 - std::sqrt(2.0)),  //--- Save also in the NavierStokes class the TR-BDF2 parameter value
     TR_BDF2_stage(1),             //--- Initialize the flag for the TR_BDF2 stage
     Re(data.Reynolds),
+    Cs2(data.Cs2),
     dt(data.dt),
     vel_init(data.initial_time),
     pres_init(data.initial_time),
@@ -2585,6 +2587,7 @@ namespace NS_TRBDF2 {
           << "dim (M_h) = " << dof_handler_pressure.n_dofs()
           << std::endl
           << "Re        = " << Re << std::endl
+          << "Cs2        = " << Cs2 << std::endl
           << std::endl;
 
     if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) {

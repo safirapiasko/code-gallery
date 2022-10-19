@@ -2,14 +2,16 @@ subsection Physical data
   # In this subsection we declare the physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
-  set final_time   = 400.0
+  set final_time   = 0.05
   set Reynolds     = 100.0
+  set Cs2          = 0.01
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt = 5.0e-3
+  set dt = 5.0e-4
+  set time_restart = 100.0
 end
 
 subsection Space discretization
@@ -26,14 +28,20 @@ subsection Data solve
   # for the velocity.
   set max_iterations = 10000  # maximal number of iterations that linear solvers must make
   set eps            = 1e-8  # stopping criterion
+  set step_restart   = 20000
 end
 
 set saving directory = SimTest
 
-set refinement_iterations = 5900
+set refinement_iterations = 0
 
 #The output frequency
 set output_interval = 500
 
 #Finally we set the verbosity level
 set verbose = true
+
+#Set whether we are in presence of a restart or not
+set restart = false
+
+#Set if you want to save files for possible restart 
