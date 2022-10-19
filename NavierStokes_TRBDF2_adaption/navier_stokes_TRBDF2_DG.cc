@@ -2931,7 +2931,8 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity, u_n, postprocessor);
 
-    data_out.build_patches(MappingQ1<dim>(), 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
+                           EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
     const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
@@ -3234,7 +3235,8 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity_tmp, u_n_tmp, postprocessor);
 
-    data_out.build_patches(MappingQ1<dim>(), 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
+			   EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
     const std::string output = "./" + saving_dir + "/solution_max_res_end.vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
   }
