@@ -172,13 +172,13 @@ namespace RunTimeParameters {
       initial_time = prm.get_double("initial_time");
       final_time   = prm.get_double("final_time");
       Reynolds     = prm.get_double("Reynolds");
-      time_restart = prm.get_double("time_restart");
     }
     prm.leave_subsection();
 
     prm.enter_subsection("Time step data");
     {
-      dt = prm.get_double("dt");
+      dt           = prm.get_double("dt");
+      time_restart = prm.get_double("time_restart");
     }
     prm.leave_subsection();
 
