@@ -61,6 +61,9 @@
 
 #include <deal.II/meshworker/mesh_loop.h>
 
+#include <deal.II/fe/mapping_q.h>
+#include <deal.II/grid/manifold_lib.h>
+
 #include "runtime_parameters.h"
 #include "equation_data.h"
 
@@ -520,7 +523,7 @@ namespace NS_TRBDF2 {
                                                           test function ---*/
 
           const auto& point_vectorized   = phi.quadrature_point(q);
-          
+
           phi.submit_gradient(-a21*viscosity.value(point_vectorized, grad_u_n, dx, Re)*grad_u_n + a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
         }
@@ -575,7 +578,7 @@ namespace NS_TRBDF2 {
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma, q);
           phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma - 
+                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma -
                              a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
 
         }
@@ -636,20 +639,20 @@ namespace NS_TRBDF2 {
           const auto& n_plus                 = phi_p.get_normal_vector(q); /*--- The normal vector is the same
                                                                                  for both phi_p and phi_m. If the face is interior,
                                                                                  it correspond to the outer normal ---*/
-          const VectorizedArray<Number>& dx_p = phi_deltas_p.get_value(q); 
+          const VectorizedArray<Number>& dx_p = phi_deltas_p.get_value(q);
           const VectorizedArray<Number>& dx_m = phi_deltas_m.get_value(q);
           const auto& point_vectorized_p   = phi_p.quadrature_point(q);
           const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_old    = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*phi_old_p.get_symmetric_gradient(q) + 
+          const auto& avg_visc_grad_u_old    = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*phi_old_p.get_symmetric_gradient(q) +
                                                viscosity.value(point_vectorized_m, phi_old_m.get_symmetric_gradient(q), dx_m, Re)*phi_old_m.get_symmetric_gradient(q);
           const auto& avg_tensor_product_u_n = 0.5*(outer_product(phi_old_p.get_value(q), phi_old_extr_p.get_value(q)) +
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
-          
+
           phi_p.submit_value((a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
           phi_m.submit_value(-(a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
-          
+
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -666,7 +669,7 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press_p(data, true, 1),
                                                                        phi_old_press_m(data, false, 1);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
-                                                         phi_deltas_m(data, false, 2);                                                                       
+                                                         phi_deltas_m(data, false, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++ face) {
@@ -694,15 +697,15 @@ namespace NS_TRBDF2 {
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus                       = phi_p.get_normal_vector(q);
 
-          const VectorizedArray<Number>& dx_p = phi_deltas_p.get_value(q); 
+          const VectorizedArray<Number>& dx_p = phi_deltas_p.get_value(q);
           const VectorizedArray<Number>& dx_m = phi_deltas_m.get_value(q);
           const auto& point_vectorized_p   = phi_p.quadrature_point(q);
           const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_old    = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*phi_old_p.get_symmetric_gradient(q) + 
+          const auto& avg_visc_grad_u_old    = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*phi_old_p.get_symmetric_gradient(q) +
                                                viscosity.value(point_vectorized_m, phi_old_m.get_symmetric_gradient(q), dx_m, Re)*phi_old_m.get_symmetric_gradient(q);
 
-          const auto& avg_visc_grad_u_int    = viscosity.value(point_vectorized_p, phi_int_p.get_symmetric_gradient(q), dx_p, Re)*phi_int_p.get_symmetric_gradient(q) + 
+          const auto& avg_visc_grad_u_int    = viscosity.value(point_vectorized_p, phi_int_p.get_symmetric_gradient(q), dx_p, Re)*phi_int_p.get_symmetric_gradient(q) +
                                                viscosity.value(point_vectorized_m, phi_int_m.get_symmetric_gradient(q), dx_m, Re)*phi_int_m.get_symmetric_gradient(q);
 
           const auto& avg_tensor_product_u_n       = 0.5*(outer_product(phi_old_p.get_value(q), phi_old_p.get_value(q)) +
@@ -711,7 +714,7 @@ namespace NS_TRBDF2 {
                                                           outer_product(phi_int_m.get_value(q), phi_int_m.get_value(q)));
           const auto& avg_p_old                    = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          
+
           phi_p.submit_value((a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
           phi_m.submit_value(-(a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
@@ -787,7 +790,7 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
           const auto lambda                 = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-          phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus - 
+          phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
                           p_old*n_plus + a22*2.0 * viscosity.value(point_vectorized, grad_u_old, dx, Re) *coef_jump*u_int_m -
                           aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
           phi.submit_gradient(-aux_coeff*theta_v*a22*viscosity.value(point_vectorized, grad_u_old, dx, Re)*(outer_product(u_int_m, n_plus)+outer_product(n_plus, u_int_m)), q);
@@ -850,7 +853,7 @@ namespace NS_TRBDF2 {
 
           const auto& visc_int = viscosity.value(point_vectorized, grad_u_int, dx, Re);
           const auto& visc_old = viscosity.value(point_vectorized, grad_u_old, dx, Re);
-          
+
           phi.submit_value((a31*visc_old*grad_u_old + a32*visc_int*grad_u_int -
                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
                           a33*visc_int*2.0*coef_jump*u_m -
@@ -1039,7 +1042,7 @@ namespace NS_TRBDF2 {
           const auto& grad_u_int           = 2. * phi.get_symmetric_gradient(q);
           const auto& u_n_gamma_ov_2       = phi_old_extr.get_value(q);
           const auto& tensor_product_u_int = outer_product(u_int, u_n_gamma_ov_2);
-          
+
           const auto& dx = phi_deltas.get_value(q);
           const auto& point_vectorized   = phi.quadrature_point(q);
 
@@ -1062,7 +1065,7 @@ namespace NS_TRBDF2 {
         phi.gather_evaluate(src, EvaluationFlags::values | EvaluationFlags::gradients);
         phi_int_extr.reinit(cell);
         phi_int_extr.gather_evaluate(u_extr, EvaluationFlags::values);
-        
+
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
 
@@ -1112,7 +1115,7 @@ namespace NS_TRBDF2 {
         phi_old_extr_p.gather_evaluate(u_extr, EvaluationFlags::values);
         phi_old_extr_m.reinit(face);
         phi_old_extr_m.gather_evaluate(u_extr, EvaluationFlags::values);
-        
+
         phi_deltas_p.reinit(face);
         phi_deltas_p.gather_evaluate(deltas, EvaluationFlags::values);
         phi_deltas_m.reinit(face);
@@ -1124,15 +1127,15 @@ namespace NS_TRBDF2 {
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus                   = phi_p.get_normal_vector(q);
-          
-          const auto& dx_p = phi_deltas_p.get_value(q); 
+
+          const auto& dx_p = phi_deltas_p.get_value(q);
           const auto& dx_m = phi_deltas_m.get_value(q);
           const auto& point_vectorized_p   = phi_p.quadrature_point(q);
           const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) + 
+          const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) +
                                                  viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*phi_m.get_symmetric_gradient(q);
-          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
                                         viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
           const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
@@ -1163,7 +1166,7 @@ namespace NS_TRBDF2 {
                                                                        phi_extr_p(data, true, 0),
                                                                        phi_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
-                                                             phi_deltas_m(data, false, 2);                                                                       
+                                                             phi_deltas_m(data, false, 2);
 
       /*--- We loop over all faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -1188,14 +1191,14 @@ namespace NS_TRBDF2 {
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus               = phi_p.get_normal_vector(q);
 
-          const auto& dx_p = phi_deltas_p.get_value(q); 
+          const auto& dx_p = phi_deltas_p.get_value(q);
           const auto& dx_m = phi_deltas_m.get_value(q);
           const auto& point_vectorized_p   = phi_p.quadrature_point(q);
           const auto& point_vectorized_m   = phi_m.quadrature_point(q);
-          
-          const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) + 
+
+          const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) +
                                                  viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*phi_m.get_symmetric_gradient(q);
-          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+          const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
                                         viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
           const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
@@ -1259,7 +1262,7 @@ namespace NS_TRBDF2 {
             const auto& u_int                = phi.get_value(q);
             const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
             const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-            
+
             const auto& point_vectorized     = phi.quadrature_point(q);
             const auto& dx = phi_deltas.get_value(q);
 
@@ -1294,7 +1297,7 @@ namespace NS_TRBDF2 {
             }
 
             const auto& visc = viscosity.value(point_vectorized, grad_u_int, dx, Re);
-            
+
             phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus +
                              visc*coef_jump*(u_int - u_int_m)) + a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
                              a22*0.5*lambda*(u_int - u_int_m), q);
@@ -1334,13 +1337,13 @@ namespace NS_TRBDF2 {
             const auto& u                = phi.get_value(q);
             const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
             const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
-            
+
             const auto& point_vectorized     = phi.quadrature_point(q);
             const auto& dx = phi_deltas.get_value(q);
 
             phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                              a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
-            phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u, n_plus) + 
+            phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u, n_plus) +
                              outer_product(n_plus, u)), q);
 
           }
@@ -1370,8 +1373,8 @@ namespace NS_TRBDF2 {
             }
             const auto& visc = viscosity.value(point_vectorized, grad_u, dx, Re);
 
-            phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + 
-                             visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + 
+            phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus +
+                             visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
                              a33*0.5*lambda*(u - u_m), q);
             phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u-u_m, n_plus)+ outer_product(n_plus, u - u_m)), q);
           }
@@ -1748,14 +1751,14 @@ namespace NS_TRBDF2 {
           for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
             const auto& n_plus                   = phi_p.get_normal_vector(q);
 
-            const auto& dx_p = phi_deltas_p.get_value(q); 
+            const auto& dx_p = phi_deltas_p.get_value(q);
             const auto& dx_m = phi_deltas_m.get_value(q);
             const auto& point_vectorized_p   = phi_p.quadrature_point(q);
             const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-            const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) + 
+            const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) +
                                                    viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*phi_m.get_symmetric_gradient(q);
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
                                           viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
             const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
@@ -1764,7 +1767,7 @@ namespace NS_TRBDF2 {
             const auto  lambda                   = std::max(std::abs(scalar_product(phi_old_extr_p.get_value(q), n_plus)),
                                                             std::abs(scalar_product(phi_old_extr_m.get_value(q), n_plus)));
 
- 
+
           phi_p.submit_value(a22*(-avg_visc_grad_u_int*n_plus + avg_visc * coef_jump*jump_u_int) +
                              a22*avg_tensor_product_u_int*n_plus + 0.5*a22*lambda*jump_u_int, q);
           phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  avg_visc * coef_jump*jump_u_int) -
@@ -1794,7 +1797,7 @@ namespace NS_TRBDF2 {
                                                                        phi_extr_p(data, true, 0),
                                                                        phi_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>   phi_deltas_p(data, true, 2),
-                                                             phi_deltas_m(data, false, 2);                                                                       
+                                                             phi_deltas_m(data, false, 2);
 
       AssertDimension(phi_p.dofs_per_component, phi_m.dofs_per_component);
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal_p(phi_p.dofs_per_component),
@@ -1835,14 +1838,14 @@ namespace NS_TRBDF2 {
           for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
             const auto& n_plus               = phi_p.get_normal_vector(q);
 
-            const auto& dx_p = phi_deltas_p.get_value(q); 
+            const auto& dx_p = phi_deltas_p.get_value(q);
             const auto& dx_m = phi_deltas_m.get_value(q);
             const auto& point_vectorized_p   = phi_p.quadrature_point(q);
             const auto& point_vectorized_m   = phi_m.quadrature_point(q);
-            
-            const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) + 
+
+            const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*phi_p.get_symmetric_gradient(q) +
                                                viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*phi_m.get_symmetric_gradient(q);
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) + 
+            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
                                           viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
 
             const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
@@ -1850,7 +1853,7 @@ namespace NS_TRBDF2 {
                                                     outer_product(phi_m.get_value(q), phi_extr_m.get_value(q)));
             const auto  lambda               = std::max(std::abs(scalar_product(phi_extr_p.get_value(q), n_plus)),
                                                         std::abs(scalar_product(phi_extr_m.get_value(q), n_plus)));
- 
+
             phi_p.submit_value(a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) +
                               a33*avg_tensor_product_u*n_plus + 0.5*a33*lambda*jump_u, q);
             phi_m.submit_value(-a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) -
@@ -2029,7 +2032,7 @@ namespace NS_TRBDF2 {
 
               phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                               a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
-              phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u, n_plus) + 
+              phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u, n_plus) +
                               outer_product(n_plus, u)), q);
             }
             phi.integrate(true, true);
@@ -2071,8 +2074,8 @@ namespace NS_TRBDF2 {
 
               const auto& visc = viscosity.value(point_vectorized, grad_u, dx, Re);
 
-              phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus + 
-                              visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + 
+              phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus +
+                              visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
                               a33*0.5*lambda*(u - u_m), q);
               phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(outer_product(u-u_m, n_plus)+ outer_product(n_plus, u - u_m)), q);
             }
@@ -2333,7 +2336,7 @@ namespace NS_TRBDF2 {
     /*--- Quadrature formulas for velocity and pressure, respectively ---*/
     QGauss<dim> quadrature_pressure;
     QGauss<dim> quadrature_velocity;
-    
+
 
     /*--- Now we define all the vectors for the solution. We start from the pressure
           with p^n, p^(n+gamma) and a vector for rhs ---*/
@@ -2515,8 +2518,84 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::create_triangulation(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
 
-    GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+    triangulation.clear();
+
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD),
+                                              tria8(MPI_COMM_WORLD),
+                                              triangulation_tmp(MPI_COMM_WORLD);
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+
+    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                              Point<dim>(0.0, 0.8),
+                                              Point<dim>(0.8, 1.21));
+
+    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-12, true);
+
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(3.0, 0.8));
+
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                              Point<dim>(0.0, 1.21),
+                                              Point<dim>(3.0, 1.94));
+
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.02),
+                                              Point<dim>(3.0, 0.06));
+
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                              Point<dim>(0.0, 1.94),
+                                              Point<dim>(3.0, 1.98));
+
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(3.0, 0.02));
+
+    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                              Point<dim>(0.0, 1.98),
+                                              Point<dim>(3.0, 2.0));
+
+    GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                        triangulation, 1e-12, true);
+
+    /*--- Attach manifold (manifold ids are already copied) ---*/
+    triangulation.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+    TransfiniteInterpolationManifold<2> inner_manifold;
+    inner_manifold.initialize(triangulation);
+    triangulation.set_manifold(1, inner_manifold);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 3.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(face->manifold_id() == 0)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                 std::abs(center[1] - 2.0) < 1.0e-10,
+                 ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
 
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -2547,7 +2626,7 @@ namespace NS_TRBDF2 {
           << "dim (M_h) = " << dof_handler_pressure.n_dofs()
           << std::endl
           << "Re        = " << Re << std::endl
-          << "Cs2        = " << Cs2 << std::endl
+          << "Cs2       = " << Cs2 << std::endl
           << std::endl;
 
     if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) {
@@ -2605,7 +2684,7 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(pres_int, 1);
     matrix_free_storage->initialize_dof_vector(pres_n, 1);
     matrix_free_storage->initialize_dof_vector(rhs_p, 1);
-    
+
     matrix_free_storage->initialize_dof_vector(deltas, 2);
 
     // initialize delta calculation
@@ -2614,11 +2693,11 @@ namespace NS_TRBDF2 {
         std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
         cell->get_dof_indices(dof_indices);
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          deltas(dof_indices[idx]) = cell->diameter()/std::sqrt(dim);
+          deltas(dof_indices[idx]) = cell->diameter()/(std::sqrt(dim)*(EquationData::degree_p + 1));
         }
       }
     }
-    
+
     navier_stokes_matrix.set_deltas(deltas);
 
 
@@ -3211,8 +3290,67 @@ namespace NS_TRBDF2 {
   //
   template<int dim>
   void NavierStokesProjection<dim>::save_max_res() {
-    parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD);
-    GridGenerator::plate_with_a_hole(triangulation_tmp, 0.5, 1.0, 1.0, 1.1, 1.0, 19.0, Point<2>(2.0, 2.0), 0, 1, 1.0, 2, true);
+    parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD),
+                                              tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD),
+                                              tria8(MPI_COMM_WORLD),
+                                              triangulation_tmp2(MPI_COMM_WORLD);
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                              Point<dim>(0.0, 0.8),
+                                              Point<dim>(0.8, 1.21));
+    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp2, 1.e-12, true);
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(3.0, 0.8));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                              Point<dim>(0.0, 1.21),
+                                              Point<dim>(3.0, 1.94));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.02),
+                                              Point<dim>(3.0, 0.06));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                              Point<dim>(0.0, 1.94),
+                                              Point<dim>(3.0, 1.98));
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(3.0, 0.02));
+    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                              Point<dim>(0.0, 1.98),
+                                              Point<dim>(3.0, 2.0));
+    GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                        triangulation_tmp, 1e-12, true);
+    triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+    TransfiniteInterpolationManifold<2> inner_manifold;
+    inner_manifold.initialize(triangulation_tmp);
+    triangulation_tmp.set_manifold(1, inner_manifold);
+    for(const auto& face : triangulation_tmp.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 3.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(face->manifold_id() == 0)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                 std::abs(center[1] - 2.0) < 1.0e-10,
+                 ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
     triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
 
     DoFHandler<dim> dof_handler_velocity_tmp(triangulation_tmp);
