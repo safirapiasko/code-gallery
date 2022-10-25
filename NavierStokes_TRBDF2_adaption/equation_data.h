@@ -73,7 +73,7 @@ namespace EquationData {
     (void)component;
     AssertIndexRange(component, 1);
 
-    return 2.2 - p(0);
+    return 3.0 - p(0);
   }
 
   // Viscosity class definition
