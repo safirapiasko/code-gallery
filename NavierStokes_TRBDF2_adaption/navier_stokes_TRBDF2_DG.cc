@@ -2357,6 +2357,21 @@ namespace NS_TRBDF2 {
 
     LinearAlgebra::distributed::Vector<double> deltas;
 
+    /*--- Variables for statistics ---*/
+    std::vector<Point<dim>> cylinder_points;
+    std::vector<Point<dim>> horizontal_wake_points;
+    std::vector<Point<dim>> vertical_profile_points1;
+    std::vector<Point<dim>> vertical_profile_points2;
+    std::vector<Point<dim>> vertical_profile_points3;
+
+    std::vector<double> avg_pressure;
+    std::vector<double> avg_stress;
+
+    std::vector<Vector<double>> avg_horizontal_velocity;
+    std::vector<Vector<double>> avg_vertical_velocity1;
+    std::vector<Vector<double>> avg_vertical_velocity2;
+    std::vector<Vector<double>> avg_vertical_velocity3;
+
     Vector<double> Linfty_error_per_cell_vel;
 
     DeclException2(ExcInvalidTimeStep,
@@ -2386,6 +2401,8 @@ namespace NS_TRBDF2 {
 
     void output_results(const unsigned int step);
 
+    void output_statistics();
+
     void refine_mesh();
 
     void interpolate_max_res(const unsigned int level);
@@ -2394,6 +2411,18 @@ namespace NS_TRBDF2 {
 
   private:
     void compute_lift_and_drag();
+
+    void initialize_points_around_cylinder(const unsigned int n_points);
+
+    std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
+
+    void compute_pressure_avg_over_boundary(int n);
+
+    void compute_stress_avg_over_boundary(int n);
+
+    void compute_lipschitz_number();
+
+    void compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity);
 
     /*--- Technical member to handle the various steps ---*/
     std::shared_ptr<MatrixFree<dim, double>> matrix_free_storage;
@@ -2424,6 +2453,7 @@ namespace NS_TRBDF2 {
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
+    bool         big_mesh;
 
     std::string  saving_dir;
 
@@ -2431,6 +2461,7 @@ namespace NS_TRBDF2 {
                  save_for_restart;
     unsigned int step_restart;
     double       time_restart;
+    bool         as_initial_conditions;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2444,6 +2475,15 @@ namespace NS_TRBDF2 {
 
     std::ofstream output_lift;
     std::ofstream output_drag;
+
+    std::ofstream output_avg_pressure;
+    std::ofstream output_Cp;
+    std::ofstream output_Cf;
+    std::ofstream output_lipschitz;
+    std::ofstream out_vel_hor;
+    std::ofstream out_vel_ver1;
+    std::ofstream out_vel_ver2;
+    std::ofstream out_vel_ver3;
   };
 
 
@@ -2479,8 +2519,10 @@ namespace NS_TRBDF2 {
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
+    big_mesh(data.big_mesh),
     saving_dir(data.dir),
     restart(data.restart),
+    as_initial_conditions(data.as_initial_conditions),
     save_for_restart(data.save_for_restart),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
@@ -2492,7 +2534,15 @@ namespace NS_TRBDF2 {
     output_n_dofs_velocity("./" + data.dir + "/n_dofs_velocity.dat", std::ofstream::out),
     output_n_dofs_pressure("./" + data.dir + "/n_dofs_pressure.dat", std::ofstream::out),
     output_lift("./" + data.dir + "/lift.dat", std::ofstream::out),
-    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out) {
+    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out),
+    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out),
+    output_avg_pressure("./" + data.dir + "/avg_p.dat", std::ofstream::out),
+    output_Cp("./" + data.dir + "/Cp.dat", std::ofstream::out),
+    output_Cf("./" + data.dir + "/Cf.dat", std::ofstream::out),
+    out_vel_hor("./" + data.dir + "/out_vel_hor.dat", std::ofstream::out),
+    out_vel_ver1("./" + data.dir + "/out_vel_ver1.dat", std::ofstream::out),
+    out_vel_ver2("./" + data.dir + "/out_vel_ver2.dat", std::ofstream::out),
+    out_vel_ver3("./" + data.dir + "/out_vel_ver3.dat", std::ofstream::out)    {
 
       if(EquationData::degree_p < 1) {
         pcout
@@ -2517,85 +2567,90 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::create_triangulation(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
+    if(big_mesh){
+      triangulation.clear();
 
-    triangulation.clear();
+      parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                                tria2(MPI_COMM_WORLD),
+                                                tria3(MPI_COMM_WORLD),
+                                                tria4(MPI_COMM_WORLD),
+                                                tria5(MPI_COMM_WORLD),
+                                                tria6(MPI_COMM_WORLD),
+                                                tria7(MPI_COMM_WORLD),
+                                                tria8(MPI_COMM_WORLD),
+                                                triangulation_tmp(MPI_COMM_WORLD);
 
-    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
-                                              tria2(MPI_COMM_WORLD),
-                                              tria3(MPI_COMM_WORLD),
-                                              tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD),
-                                              tria8(MPI_COMM_WORLD),
-                                              triangulation_tmp(MPI_COMM_WORLD);
+      /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+      GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+      GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
 
-    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
-    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+      GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                                Point<dim>(0.0, 0.8),
+                                                Point<dim>(0.8, 1.21));
 
-    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
-                                              Point<dim>(0.0, 0.8),
-                                              Point<dim>(0.8, 1.21));
+      GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-12, true);
 
-    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-12, true);
+      GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                                Point<dim>(0.0, 0.06),
+                                                Point<dim>(3.0, 0.8));
 
-    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
-                                              Point<dim>(0.0, 0.06),
-                                              Point<dim>(3.0, 0.8));
+      GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                                Point<dim>(0.0, 1.21),
+                                                Point<dim>(3.0, 1.94));
 
-    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
-                                              Point<dim>(0.0, 1.21),
-                                              Point<dim>(3.0, 1.94));
+      GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                                Point<dim>(0.0, 0.02),
+                                                Point<dim>(3.0, 0.06));
 
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.02),
-                                              Point<dim>(3.0, 0.06));
+      GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                                Point<dim>(0.0, 1.94),
+                                                Point<dim>(3.0, 1.98));
 
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 1.94),
-                                              Point<dim>(3.0, 1.98));
+      GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                                Point<dim>(0.0, 0.0),
+                                                Point<dim>(3.0, 0.02));
 
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
-                                              Point<dim>(0.0, 0.0),
-                                              Point<dim>(3.0, 0.02));
+      GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                                Point<dim>(0.0, 1.98),
+                                                Point<dim>(3.0, 2.0));
 
-    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
-                                              Point<dim>(0.0, 1.98),
-                                              Point<dim>(3.0, 2.0));
+      GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                          triangulation, 1e-12, true);
 
-    GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
-                                        triangulation, 1e-12, true);
+      /*--- Attach manifold (manifold ids are already copied) ---*/
+      triangulation.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+      TransfiniteInterpolationManifold<2> inner_manifold;
+      inner_manifold.initialize(triangulation);
+      triangulation.set_manifold(1, inner_manifold);
 
-    /*--- Attach manifold (manifold ids are already copied) ---*/
-    triangulation.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
-    TransfiniteInterpolationManifold<2> inner_manifold;
-    inner_manifold.initialize(triangulation);
-    triangulation.set_manifold(1, inner_manifold);
+      /*--- Set boundary id ---*/
+      for(const auto& face : triangulation.active_face_iterators()) {
+        if(face->at_boundary()) {
+          const Point<dim> center = face->center();
 
-    /*--- Set boundary id ---*/
-    for(const auto& face : triangulation.active_face_iterators()) {
-      if(face->at_boundary()) {
-        const Point<dim> center = face->center();
-
-        // left side
-        if(std::abs(center[0] - 0.0) < 1e-10)
-          face->set_boundary_id(0);
-        // right side
-        else if(std::abs(center[0] - 3.0) < 1e-10)
-          face->set_boundary_id(1);
-        // cylinder boundary
-        else if(face->manifold_id() == 0)
-          face->set_boundary_id(2);
-        // sides of channel
-        else {
-          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                 std::abs(center[1] - 2.0) < 1.0e-10,
-                 ExcInternalError());
-          face->set_boundary_id(3);
+          // left side
+          if(std::abs(center[0] - 0.0) < 1e-10)
+            face->set_boundary_id(0);
+          // right side
+          else if(std::abs(center[0] - 3.0) < 1e-10)
+            face->set_boundary_id(1);
+          // cylinder boundary
+          else if(face->manifold_id() == 0)
+            face->set_boundary_id(2);
+          // sides of channel
+          else {
+            Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                  std::abs(center[1] - 2.0) < 1.0e-10,
+                  ExcInternalError());
+            face->set_boundary_id(3);
+          }
         }
       }
     }
+    else{
+      GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+    }
+    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
 
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -2693,13 +2748,12 @@ namespace NS_TRBDF2 {
         std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
         cell->get_dof_indices(dof_indices);
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          deltas(dof_indices[idx]) = cell->diameter()/(std::sqrt(dim)*(EquationData::degree_p + 1));
+          deltas(dof_indices[idx]) = std::pow(cell->measure(), 1./dim)/(EquationData::degree_p + 1);
         }
       }
     }
 
     navier_stokes_matrix.set_deltas(deltas);
-
 
     /*--- Initialize the multigrid structure. We dedicate ad hoc 'dof_handlers_mg' and 'constraints_mg' because
           we use float as type. Moreover we can initialize already with the index of the finite element of the pressure;
@@ -3040,6 +3094,239 @@ namespace NS_TRBDF2 {
     }
   }
 
+  template<int dim>
+  void NavierStokesProjection<dim>::output_statistics() {
+
+    const double p_inf = 3.0;
+    const double U_inf = 10.0;
+
+    output_avg_pressure.close();
+    output_Cf.close();
+    out_vel_hor.close();
+    out_vel_ver1.close();
+    out_vel_ver2.close();
+    out_vel_ver3.close();
+    output_Cp.close();
+
+    for(unsigned int rank = 0; rank < Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD); ++rank) {
+
+      if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == rank) {
+        if(rank == 0){
+          output_avg_pressure.open("./" + saving_dir + "/avg_p.dat", std::ofstream::out | std::ofstream::trunc);
+          output_Cf.open("./" + saving_dir + "/Cf.dat", std::ofstream::out | std::ofstream::trunc);
+          output_Cp.open("./" + saving_dir + "/Cp.dat", std::ofstream::out | std::ofstream::trunc);
+          out_vel_hor.open("./" + saving_dir + "/out_vel_hor.dat", std::ofstream::out | std::ofstream::trunc);
+          out_vel_ver1.open("./" + saving_dir + "/out_vel_ver1.dat", std::ofstream::out | std::ofstream::trunc);
+          out_vel_ver2.open("./" + saving_dir + "/out_vel_ver2.dat", std::ofstream::out | std::ofstream::trunc);
+          out_vel_ver3.open("./" + saving_dir + "/out_vel_ver3.dat", std::ofstream::out | std::ofstream::trunc);
+        }
+        else{
+          output_avg_pressure.open("./" + saving_dir + "/avg_p.dat", std::ios_base::app);
+          output_Cf.open("./" + saving_dir + "/Cf.dat", std::ios_base::app);
+          output_Cp.open("./" + saving_dir + "/Cp.dat", std::ios_base::app);
+          out_vel_hor.open("./" + saving_dir + "/out_vel_hor.dat", std::ios_base::app);
+          out_vel_ver1.open("./" + saving_dir + "/out_vel_ver1.dat", std::ios_base::app);
+          out_vel_ver2.open("./" + saving_dir + "/out_vel_ver2.dat", std::ios_base::app);
+          out_vel_ver3.open("./" + saving_dir + "/out_vel_ver3.dat", std::ios_base::app);
+        }
+
+
+        /*--- Output average along cylinder boundary ---*/
+        for(unsigned int i = 0; i < cylinder_points.size(); i++) {
+
+          double degree = std::atan2((cylinder_points[i][1] - 0.2),  (cylinder_points[i][0] - 0.2)) >= 0.0 ?
+                          std::atan2((cylinder_points[i][1] - 0.2),  (cylinder_points[i][0] - 0.2)) * 180.0 / numbers::PI :
+                          (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
+
+          /*--- Output pressure average ---*/
+          output_avg_pressure << degree << "," << avg_pressure[i] << std::endl;
+
+          /*--- Output Cf average ---*/
+          output_Cf << avg_stress[i] * 2. / (Re * U_inf * U_inf) << std::endl;
+        }
+
+        /*--- Output average velocity horizontal wake points ---*/
+        for(unsigned int i = 0; i < horizontal_wake_points.size(); i++) {
+          out_vel_hor  << horizontal_wake_points[i][0] - 0.2 << ","
+                       << avg_horizontal_velocity[i][0] << ","
+                       << avg_horizontal_velocity[i][1] << std::endl;
+        }
+
+        /*--- Output average velocity vertical points 1 ---*/
+        for(unsigned int i = 0; i < vertical_profile_points1.size(); i++) {
+          out_vel_ver1 << vertical_profile_points1[i][1] << ","
+                       << avg_vertical_velocity1[i][0] << ","
+                       << avg_vertical_velocity1[i][1] << std::endl;
+        }
+
+        /*--- Output average velocity vertical points 2 ---*/
+        for(unsigned int i = 0; i < vertical_profile_points2.size(); i++) {
+          out_vel_ver2 << vertical_profile_points2[i][1] << ","
+                       << avg_vertical_velocity2[i][0] << ","
+                       << avg_vertical_velocity2[i][1] << std::endl;
+        }
+
+        /*--- Output average velocity vertical points 3 ---*/
+        for(unsigned int i = 0; i < vertical_profile_points3.size(); i++) {
+          out_vel_ver3 << vertical_profile_points3[i][1] << ","
+                       << avg_vertical_velocity3[i][0] << ","
+                       << avg_vertical_velocity3[i][1] << std::endl;
+        }
+
+        /*--- Output pressure coefficient ---*/
+        for(unsigned int i = 0; i < cylinder_points.size(); i++) {
+          // output_avg_pressure << cylinder_points[i][0] << ", " << cylinder_points[i][1] << std::endl;
+          double degree = std::atan2((cylinder_points[i][1]  - 0.2), (cylinder_points[i][0] - 0.2)) >= 0.0 ?
+                          std::atan2((cylinder_points[i][1]  - 0.2), (cylinder_points[i][0] - 0.2)) * 180.0 / numbers::PI :
+                          (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
+
+          output_Cp << degree << "," << 2*(avg_pressure[i] - p_inf) / (U_inf*U_inf) << std::endl;
+        }
+
+        output_avg_pressure.close();
+        output_Cf.close();
+        out_vel_hor.close();
+        out_vel_ver1.close();
+        out_vel_ver2.close();
+        out_vel_ver3.close();
+        output_Cp.close();
+
+      }
+
+      MPI_Barrier(MPI_COMM_WORLD);
+
+    }
+
+  }
+
+  template<int dim>
+  void NavierStokesProjection<dim>::initialize_points_around_cylinder(const unsigned int n_points){
+    double angle;
+    cylinder_points.clear();
+
+    for(unsigned int i = 0; i < n_points; ++i){
+      angle = 2. * numbers::PI * i / n_points;
+      Point<dim> p(0.05*std::cos(angle)+0.2, 0.05*std::sin(angle)+0.2);
+      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
+        cylinder_points.push_back(p);
+      }
+    }
+
+  }
+
+  template<int dim>
+  std::vector<Point<dim>> NavierStokesProjection<dim>::initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point){
+    std::vector<Point<dim>> profile_points;
+    Point<dim> p = start_point;
+
+    while(p[0] <= end_point[0] && p[1] <= end_point[1]){
+      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() && 
+          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
+        profile_points.push_back(p);
+      }
+      p[0] = p[0] + spacing * std::cos(angle);
+      p[1] = p[1] + spacing * std::sin(angle);
+    }
+
+    return profile_points;
+  }
+
+  // pressure average over time
+  template<int dim>
+  void NavierStokesProjection<dim>::compute_pressure_avg_over_boundary(int n){
+    for(int i = 0; i < cylinder_points.size(); i++){
+      if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned())  {
+        double pres = VectorTools::point_value(dof_handler_pressure, pres_n, cylinder_points[i]);
+        if(n > 1){
+          avg_pressure[i] = ((n-1) * avg_pressure[i] + pres) / n;
+        }
+        else {
+          avg_pressure.push_back(pres);
+        }
+      }
+    }
+  }
+
+  // stress average over time over boundary
+  template<int dim>
+  void NavierStokesProjection<dim>::compute_stress_avg_over_boundary(int n){
+    double x0 = 0.2;
+    double y0 = 0.2;
+
+    for(int i = 0; i < cylinder_points.size(); i++){
+      if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned())  {
+        std::vector<Tensor< 1, dim, double >> vel_grad;
+        VectorTools::point_gradient(dof_handler_velocity, u_n, cylinder_points[i], vel_grad);
+
+        Tensor< 1, dim, double > normal_vector = Tensor< 1, dim, double >({2.*(cylinder_points[i][0] - x0), 2.*(cylinder_points[i][1] - y0)});
+        normal_vector /= normal_vector.norm();
+
+        Tensor< 1, dim, double > tangential_vector = Tensor< 1, dim, double >({normal_vector[1], - normal_vector[0]});
+
+        Tensor< 2, dim, double > vel_grad_tens;
+        for(unsigned int i = 0; i < dim; ++i){
+          for(unsigned int j = 0; j < dim; ++j){
+            vel_grad_tens[i][j] = vel_grad[i][j];
+          }
+        }
+
+        if(n > 1){
+          avg_stress[i] = ((n-1) * avg_stress[i] + vel_grad_tens * normal_vector * tangential_vector) / n;
+        }
+        else {
+          avg_stress.push_back(vel_grad_tens * normal_vector * tangential_vector);
+        }
+      }
+    }
+  }
+
+  // velocity average over time
+  template<int dim>
+  void NavierStokesProjection<dim>::compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity){
+    for(int i = 0; i < points.size(); i++){
+      if(GridTools::find_active_cell_around_point(triangulation, points[i]) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, points[i])->is_locally_owned())  {
+        Vector<double> vel;
+        VectorTools::point_value(dof_handler_velocity, u_n, points[i], vel);
+        if(n > 1){
+          for(unsigned int d = 0; d < dim; ++d){
+            avg_velocity[i][d] = ((n-1) * avg_velocity[i][d] + vel[d]) / n;
+          }
+        }
+        else {
+          avg_velocity.push_back(vel);
+        }
+      }
+    }
+  }
+
+  // compute maximal local voriticity
+  template<int dim>
+  void  NavierStokesProjection<dim>::compute_lipschitz_number(){
+    FEValues<dim> fe_values(fe_velocity, quadrature_velocity, update_gradients);
+    std::vector<std::vector<Tensor<1, dim, double>>> solution_gradients_velocity(quadrature_velocity.size(), std::vector<Tensor<1, dim, double>>(dim));
+
+    double max_local_vorticity = std::numeric_limits<double>::min();
+
+    for(const auto& cell: dof_handler_velocity.active_cell_iterators()) {
+      if(cell->is_locally_owned()) {
+        fe_values.reinit(cell);
+        fe_values.get_function_gradients(u_n, solution_gradients_velocity);
+
+        for(unsigned int q = 0; q < quadrature_velocity.size(); ++q)
+          max_local_vorticity = std::max(max_local_vorticity,
+        std::abs(solution_gradients_velocity[q][1][0] - solution_gradients_velocity[q][0][1])*dt);
+      }
+    }
+
+    const double lipschitz = Utilities::MPI::max(max_local_vorticity, MPI_COMM_WORLD);
+    if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) {
+      output_lipschitz << lipschitz << std::endl;
+    }
+  }
 
   // @sect{<code>NavierStokesProjection::compute_lift_and_drag</code>}
 
@@ -3290,67 +3577,75 @@ namespace NS_TRBDF2 {
   //
   template<int dim>
   void NavierStokesProjection<dim>::save_max_res() {
-    parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD),
-                                              tria1(MPI_COMM_WORLD),
-                                              tria2(MPI_COMM_WORLD),
-                                              tria3(MPI_COMM_WORLD),
-                                              tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD),
-                                              tria8(MPI_COMM_WORLD),
-                                              triangulation_tmp2(MPI_COMM_WORLD);
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
-    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
-    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
-                                              Point<dim>(0.0, 0.8),
-                                              Point<dim>(0.8, 1.21));
-    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp2, 1.e-12, true);
-    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
-                                              Point<dim>(0.0, 0.06),
-                                              Point<dim>(3.0, 0.8));
-    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
-                                              Point<dim>(0.0, 1.21),
-                                              Point<dim>(3.0, 1.94));
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.02),
-                                              Point<dim>(3.0, 0.06));
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 1.94),
-                                              Point<dim>(3.0, 1.98));
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
-                                              Point<dim>(0.0, 0.0),
-                                              Point<dim>(3.0, 0.02));
-    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
-                                              Point<dim>(0.0, 1.98),
-                                              Point<dim>(3.0, 2.0));
-    GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
-                                        triangulation_tmp, 1e-12, true);
-    triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
-    TransfiniteInterpolationManifold<2> inner_manifold;
-    inner_manifold.initialize(triangulation_tmp);
-    triangulation_tmp.set_manifold(1, inner_manifold);
-    for(const auto& face : triangulation_tmp.active_face_iterators()) {
-      if(face->at_boundary()) {
-        const Point<dim> center = face->center();
-        // left side
-        if(std::abs(center[0] - 0.0) < 1e-10)
-          face->set_boundary_id(0);
-        // right side
-        else if(std::abs(center[0] - 3.0) < 1e-10)
-          face->set_boundary_id(1);
-        // cylinder boundary
-        else if(face->manifold_id() == 0)
-          face->set_boundary_id(2);
-        // sides of channel
-        else {
-          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                 std::abs(center[1] - 2.0) < 1.0e-10,
-                 ExcInternalError());
-          face->set_boundary_id(3);
+    parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD);
+
+    if(big_mesh){
+      parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                                tria2(MPI_COMM_WORLD),
+                                                tria3(MPI_COMM_WORLD),
+                                                tria4(MPI_COMM_WORLD),
+                                                tria5(MPI_COMM_WORLD),
+                                                tria6(MPI_COMM_WORLD),
+                                                tria7(MPI_COMM_WORLD),
+                                                tria8(MPI_COMM_WORLD),
+                                                triangulation_tmp2(MPI_COMM_WORLD);
+      GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+      GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+      GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                                Point<dim>(0.0, 0.8),
+                                                Point<dim>(0.8, 1.21));
+      GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp2, 1.e-12, true);
+      GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                                Point<dim>(0.0, 0.06),
+                                                Point<dim>(3.0, 0.8));
+      GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                                Point<dim>(0.0, 1.21),
+                                                Point<dim>(3.0, 1.94));
+      GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                                Point<dim>(0.0, 0.02),
+                                                Point<dim>(3.0, 0.06));
+      GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                                Point<dim>(0.0, 1.94),
+                                                Point<dim>(3.0, 1.98));
+      GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                                Point<dim>(0.0, 0.0),
+                                                Point<dim>(3.0, 0.02));
+      GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                                Point<dim>(0.0, 1.98),
+                                                Point<dim>(3.0, 2.0));
+      GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                          triangulation_tmp, 1e-12, true);
+      triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+      TransfiniteInterpolationManifold<2> inner_manifold;
+      inner_manifold.initialize(triangulation_tmp);
+      triangulation_tmp.set_manifold(1, inner_manifold);
+      for(const auto& face : triangulation_tmp.active_face_iterators()) {
+        if(face->at_boundary()) {
+          const Point<dim> center = face->center();
+          // left side
+          if(std::abs(center[0] - 0.0) < 1e-10)
+            face->set_boundary_id(0);
+          // right side
+          else if(std::abs(center[0] - 3.0) < 1e-10)
+            face->set_boundary_id(1);
+          // cylinder boundary
+          else if(face->manifold_id() == 0)
+            face->set_boundary_id(2);
+          // sides of channel
+          else {
+            Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                  std::abs(center[1] - 2.0) < 1.0e-10,
+                  ExcInternalError());
+            face->set_boundary_id(3);
+          }
         }
       }
+      triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
     }
+    else{
+      GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+    }
+    
     triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
 
     DoFHandler<dim> dof_handler_velocity_tmp(triangulation_tmp);
@@ -3397,14 +3692,27 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
+    initialize_points_around_cylinder(360);
+    horizontal_wake_points = initialize_profile_points(0., 0.01, Point<dim>(0.25, 0.2), Point<dim>(2.2, 0.2));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.26, 0.0), Point<dim>(0.26, 0.41));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.74, 0.0), Point<dim>(0.74, 0.41));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(1.22, 0.0), Point<dim>(1.22, 0.41));
+
     double time = t_0 + dt;
     unsigned int n = 1;
-    if(restart) {
+    if(restart && !as_initial_conditions) {
       n    = step_restart;
       time = time_restart;
     }
     else {
       output_results(1);
+
+      compute_pressure_avg_over_boundary(n);
+      compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
+      compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
+      compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
+      compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
+      compute_stress_avg_over_boundary(n);
     }
     while(std::abs(T - time) > 1e-10) {
       time += dt;
@@ -3465,10 +3773,24 @@ namespace NS_TRBDF2 {
       /*--- The Courant number is computed taking into account the polynomial degree for the velocity ---*/
       pcout << "CFL = " << dt*max_vel*(EquationData::degree_p + 1)*
                            std::sqrt(dim)/GridTools::minimal_cell_diameter(triangulation) << std::endl;
+
       compute_lift_and_drag();
+
+      // compute time average of parameters along different points
+      compute_pressure_avg_over_boundary(n);
+      compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
+      compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
+      compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
+      compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
+      compute_stress_avg_over_boundary(n);
+
+      // compute lipschitz number at every timestep
+      compute_lipschitz_number();
+
       if(n % output_interval == 0) {
         verbose_cout << "Plotting Solution final" << std::endl;
         output_results(n);
+        output_statistics();
       }
       /*--- In case dt is not a multiple of T, we reduce dt in order to end up at T ---*/
       if(T - time < dt && T - time > 1e-10) {
@@ -3483,9 +3805,11 @@ namespace NS_TRBDF2 {
         refine_mesh();
       }
     }
+
     if(n % output_interval != 0) {
       verbose_cout << "Plotting Solution final" << std::endl;
       output_results(n);
+      output_statistics();
     }
     if(refinement_iterations > 0) {
       for(unsigned int lev = 0; lev < triangulation.n_global_levels() - 1; ++ lev)

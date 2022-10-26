@@ -27,6 +27,7 @@ namespace RunTimeParameters {
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
     unsigned int min_loc_refinements; /*--- Number of minimum local refinements allowed
                                             once reached that level ---*/
+    bool big_mesh;
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -40,6 +41,7 @@ namespace RunTimeParameters {
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
 
     bool         restart;
+    bool         as_initial_conditions;
     unsigned int step_restart;
     double       time_restart;
 
@@ -58,6 +60,7 @@ namespace RunTimeParameters {
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
+                                big_mesh(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 verbose(true),
@@ -111,6 +114,10 @@ namespace RunTimeParameters {
                         "2",
                          Patterns::Integer(0, 10),
                          " The number of minimum local refinements. ");
+      prm.declare_entry("big_mesh",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if the mesh is chosen small or big. ");
     }
     prm.leave_subsection();
 
@@ -156,6 +163,11 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether we are in presence of a "
                       "restart or not. ");
+    prm.declare_entry("as_initial_conditions",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether restart is used as initial condition "
+                      "or to continue the simulation. ");
 
     prm.declare_entry("save_for_restart",
                       "false",
@@ -193,6 +205,7 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
+      big_mesh            = prm.get_bool("big_mesh");
     }
     prm.leave_subsection();
 
@@ -213,6 +226,8 @@ namespace RunTimeParameters {
     output_interval = prm.get_integer("output_interval");
 
     restart = prm.get_bool("restart");
+
+    as_initial_conditions = prm.get_bool("as_initial_conditions");
 
     save_for_restart = prm.get_bool("save_for_restart");
   }
