@@ -418,6 +418,15 @@ namespace NS_TRBDF2 {
   }
 
 
+  // Setter of Reynolds number
+  //
+  template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
+  void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
+  set_Reynolds(const double reynolds) {
+    Re = reynolds;
+  }
+
+
   // Setter of TR-BDF2 stage (this can be known only during the effective execution
   // and so it has to be demanded to the class that really solves the problem)
   //
@@ -2467,6 +2476,7 @@ namespace NS_TRBDF2 {
     unsigned int step_restart;
     double       time_restart;
     bool         as_initial_conditions;
+    bool         modify_Reynolds;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2529,6 +2539,7 @@ namespace NS_TRBDF2 {
     saving_dir(data.dir),
     restart(data.restart),
     as_initial_conditions(data.as_initial_conditions),
+    modify_Reynolds(data.modify_Reynolds),
     save_for_restart(data.save_for_restart),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
@@ -3857,6 +3868,19 @@ namespace NS_TRBDF2 {
       if(refinement_iterations > 0 && n % refinement_iterations == 0) {
         verbose_cout << "Refining mesh" << std::endl;
         refine_mesh();
+      }
+      /*--- Modify the Reynolds number if desired ---*/
+      if(modify_Reynolds) {
+        if(restart && time <= time_restart + 0.05) {
+          const double Re_tmp = (time - time_restart)/(0.05)*(3800.0) + 100.0;
+          navier_stokes_matrix.set_Reynolds(Re_tmp);
+          verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
+        }
+        if(!restart && time <= t_0 + dt + 0.05) {
+          const double Re_tmp = (time - t_0 - dt)/(0.05)*(3800.0) + 100.0;
+          navier_stokes_matrix.set_Reynolds(Re_tmp);
+          verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
+        }
       }
     }
 

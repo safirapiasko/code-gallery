@@ -2,15 +2,15 @@ subsection Physical data
   # In this subsection we declare the physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
-  set final_time   = 0.6
-  set Reynolds     = 3900.0
-  set Cs2          = 0.
+  set final_time   = 0.65
+  set Reynolds     = 100.0
+  set Cs2          = 0.0
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt = 1.0e-4
+  set dt = 5.0e-5
   set time_restart = 0.0
 end
 
@@ -18,7 +18,7 @@ subsection Space discretization
   # In this subsection we declare the data that is relevant to the space discretization
   # we set the number of global refines the triangulation must have
   # and the degree k of the pair Q_(k+1)--Q_k of velocity--pressure finite element spaces
-  set n_of_refines = 3
+  set n_of_refines = 4
   set max_loc_refinements = 5
   set min_loc_refinements = 3
   set big_domain = true
@@ -32,7 +32,7 @@ subsection Data solve
   set step_restart   = 4000
 end
 
-set saving directory = SimTest_3ref_sub_Re3900_fix
+set saving directory = Re3900_DNS_restart_4ref_free_slip
 
 set refinement_iterations = 0
 
@@ -44,5 +44,12 @@ set verbose = true
 
 #Set whether we are in presence of a restart or not
 set restart = true
+
+#Set if the restart is done just specifying an initialization
 set as_initial_conditions = true
-#Set if you want to save files for possible restart 
+
+#Set if you want to linearly modify the Reynolds number
+set modify_Reynolds = true
+
+#Set if you want to save files for possible restart
+set save_for_restart = true
