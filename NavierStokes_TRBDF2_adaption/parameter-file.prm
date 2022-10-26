@@ -21,7 +21,7 @@ subsection Space discretization
   set n_of_refines = 3
   set max_loc_refinements = 5
   set min_loc_refinements = 3
-  set big_mesh = true
+  set big_domain = true
 end
 
 subsection Data solve

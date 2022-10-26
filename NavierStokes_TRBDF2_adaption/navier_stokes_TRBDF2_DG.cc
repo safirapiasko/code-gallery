@@ -2454,7 +2454,7 @@ namespace NS_TRBDF2 {
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
-    bool         big_mesh;
+    bool         big_domain;
 
     std::string  saving_dir;
 
@@ -2521,7 +2521,7 @@ namespace NS_TRBDF2 {
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
-    big_mesh(data.big_mesh),
+    big_domain(data.big_domain),
     saving_dir(data.dir),
     restart(data.restart),
     as_initial_conditions(data.as_initial_conditions),
@@ -2569,7 +2569,7 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::create_triangulation(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
-    if(big_mesh){
+    if(big_domain){
       triangulation.clear();
 
       parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
@@ -3617,7 +3617,7 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::save_max_res() {
     parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD);
 
-    if(big_mesh){
+    if(big_domain){
       parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
                                                 tria2(MPI_COMM_WORLD),
                                                 tria3(MPI_COMM_WORLD),
@@ -3731,10 +3731,22 @@ namespace NS_TRBDF2 {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
     initialize_points_around_cylinder(360);
-    horizontal_wake_points = initialize_profile_points(0., 0.01, Point<dim>(0.25, 0.2), Point<dim>(2.2, 0.2));
-    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.26, 0.0), Point<dim>(0.26, 0.41));
-    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.74, 0.0), Point<dim>(0.74, 0.41));
-    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(1.22, 0.0), Point<dim>(1.22, 0.41));
+
+    double height;
+    double length;
+    if(big_domain){
+      height = 2.0;
+      length = 3.0;
+    }
+    else{
+      height = 0.41;
+      length = 2.2;
+    }
+    
+    horizontal_wake_points = initialize_profile_points(0., 0.01, Point<dim>(0.25, 0.2), Point<dim>(length, 0.2));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.26, 0.0), Point<dim>(0.26, height));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.74, 0.0), Point<dim>(0.74, height));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(1.22, 0.0), Point<dim>(1.22, height));
 
     double time = t_0 + dt;
     unsigned int n = 1;

@@ -27,7 +27,7 @@ namespace RunTimeParameters {
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
     unsigned int min_loc_refinements; /*--- Number of minimum local refinements allowed
                                             once reached that level ---*/
-    bool big_mesh;
+    bool big_domain;
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -60,7 +60,7 @@ namespace RunTimeParameters {
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
-                                big_mesh(false),
+                                big_domain(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 verbose(true),
@@ -114,7 +114,7 @@ namespace RunTimeParameters {
                         "2",
                          Patterns::Integer(0, 10),
                          " The number of minimum local refinements. ");
-      prm.declare_entry("big_mesh",
+      prm.declare_entry("big_domain",
                         "false",
                         Patterns::Bool(),
                         " This flag decides if the mesh is chosen small or big. ");
@@ -205,7 +205,7 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
-      big_mesh            = prm.get_bool("big_mesh");
+      big_domain            = prm.get_bool("big_domain");
     }
     prm.leave_subsection();
 
