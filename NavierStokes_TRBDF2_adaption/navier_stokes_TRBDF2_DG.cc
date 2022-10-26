@@ -2450,6 +2450,7 @@ namespace NS_TRBDF2 {
     unsigned int max_its;
     double       eps;
 
+    unsigned int n_refines;
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
@@ -2516,6 +2517,7 @@ namespace NS_TRBDF2 {
     navier_stokes_matrix(data),
     max_its(data.max_iterations),
     eps(data.eps),
+    n_refines(data.n_refines),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -2555,7 +2557,7 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      create_triangulation(data.n_refines);
+      create_triangulation(n_refines);
       setup_dofs();
       initialize();
   }
@@ -2828,6 +2830,42 @@ namespace NS_TRBDF2 {
 
       solution_transfer_velocity.deserialize(velocities);
       solution_transfer_pressure.deserialize(pres_n);
+
+      if(n_refines - (triangulation.n_global_levels() - 1) > 0) {
+        std::vector<const LinearAlgebra::distributed::Vector<double>*> velocities_tmp;
+        velocities_tmp.push_back(&u_n);
+        velocities_tmp.push_back(&u_n_minus_1);
+
+        solution_transfer_velocity.prepare_for_coarsening_and_refinement(velocities_tmp);
+        solution_transfer_pressure.prepare_for_coarsening_and_refinement(pres_n);
+
+        triangulation.refine_global(n_refines - (triangulation.n_global_levels() - 1));
+
+        setup_dofs();
+
+        LinearAlgebra::distributed::Vector<double> transfer_velocity,
+                                                   transfer_velocity_minus_1,
+                                                   transfer_pressure;
+        transfer_velocity.reinit(u_n);
+        transfer_velocity.zero_out_ghost_values();
+        transfer_velocity_minus_1.reinit(u_n_minus_1);
+        transfer_velocity_minus_1.zero_out_ghost_values();
+        transfer_pressure.reinit(pres_n);
+        transfer_pressure.zero_out_ghost_values();
+
+        std::vector<LinearAlgebra::distributed::Vector<double>*> transfer_velocities;
+        transfer_velocities.push_back(&transfer_velocity);
+        transfer_velocities.push_back(&transfer_velocity_minus_1);
+        solution_transfer_velocity.interpolate(transfer_velocities);
+        transfer_velocity.update_ghost_values();
+        transfer_velocity_minus_1.update_ghost_values();
+        solution_transfer_pressure.interpolate(transfer_pressure);
+        transfer_pressure.update_ghost_values();
+
+        u_n         = transfer_velocity;
+        u_n_minus_1 = transfer_velocity_minus_1;
+        pres_n      = transfer_pressure;
+      }
     }
     else {
       VectorTools::interpolate(dof_handler_pressure, pres_init, pres_n);
