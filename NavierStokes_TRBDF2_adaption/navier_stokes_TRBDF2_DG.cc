@@ -418,6 +418,15 @@ namespace NS_TRBDF2 {
   }
 
 
+  // Setter of Reynolds number
+  //
+  template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
+  void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
+  set_Reynolds(const double reynolds) {
+    Re = reynolds;
+  }
+
+
   // Setter of TR-BDF2 stage (this can be known only during the effective execution
   // and so it has to be demanded to the class that really solves the problem)
   //
@@ -759,8 +768,9 @@ namespace NS_TRBDF2 {
         phi_deltas.gather_evaluate(src[3], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
-        const auto coef_jump   = (boundary_id == 1) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1) ? 0.0 : 1.0;
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -788,7 +798,8 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-          const auto lambda                 = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+          const auto lambda                 = (boundary_id == 1 || boundary_id == 3) ?
+                                              0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
           phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
                           p_old*n_plus + a22*2.0 * viscosity.value(point_vectorized, grad_u_old, dx, Re) *coef_jump*u_int_m -
@@ -824,8 +835,9 @@ namespace NS_TRBDF2 {
         phi_deltas.gather_evaluate(src[4], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1) ? 0.0 : 1.0;
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -849,7 +861,8 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
-          const auto lambda             = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
+          const auto lambda             = (boundary_id == 1 || boundary_id == 3) ?
+                                          0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
           const auto& visc_int = viscosity.value(point_vectorized, grad_u_int, dx, Re);
           const auto& visc_old = viscosity.value(point_vectorized, grad_u_old, dx, Re);
@@ -1252,7 +1265,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1327,7 +1340,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -2463,6 +2476,7 @@ namespace NS_TRBDF2 {
     unsigned int step_restart;
     double       time_restart;
     bool         as_initial_conditions;
+    bool         modify_Reynolds;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2525,6 +2539,7 @@ namespace NS_TRBDF2 {
     saving_dir(data.dir),
     restart(data.restart),
     as_initial_conditions(data.as_initial_conditions),
+    modify_Reynolds(data.modify_Reynolds),
     save_for_restart(data.save_for_restart),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
@@ -3258,7 +3273,7 @@ namespace NS_TRBDF2 {
     Point<dim> p = start_point;
 
     while(p[0] <= end_point[0] && p[1] <= end_point[1]){
-      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() && 
+      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
           GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         profile_points.push_back(p);
       }
@@ -3682,7 +3697,7 @@ namespace NS_TRBDF2 {
     else{
       GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
     }
-    
+
     triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
 
     DoFHandler<dim> dof_handler_velocity_tmp(triangulation_tmp);
@@ -3741,7 +3756,7 @@ namespace NS_TRBDF2 {
       height = 0.41;
       length = 2.2;
     }
-    
+
     horizontal_wake_points = initialize_profile_points(0., 0.01, Point<dim>(0.25, 0.2), Point<dim>(length, 0.2));
     vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.26, 0.0), Point<dim>(0.26, height));
     vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.74, 0.0), Point<dim>(0.74, height));
@@ -3852,6 +3867,19 @@ namespace NS_TRBDF2 {
       if(refinement_iterations > 0 && n % refinement_iterations == 0) {
         verbose_cout << "Refining mesh" << std::endl;
         refine_mesh();
+      }
+      /*--- Modify the Reynolds number if desired ---*/
+      if(modify_Reynolds) {
+        if(restart && time <= time_restart + 0.05) {
+          const double Re_tmp = (time - time_restart)/(0.05)*(3800.0) + 100.0;
+          navier_stokes_matrix.set_Reynolds(Re_tmp);
+          verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
+        }
+        if(!restart && time <= t_0 + dt + 0.05) {
+          const double Re_tmp = (time - t_0 - dt)/(0.05)*(3800.0) + 100.0;
+          navier_stokes_matrix.set_Reynolds(Re_tmp);
+          verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
+        }
       }
     }
 

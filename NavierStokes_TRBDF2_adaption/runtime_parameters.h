@@ -42,6 +42,7 @@ namespace RunTimeParameters {
 
     bool         restart;
     bool         as_initial_conditions;
+    bool         modify_Reynolds;
     unsigned int step_restart;
     double       time_restart;
 
@@ -168,6 +169,11 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether restart is used as initial condition "
                       "or to continue the simulation. ");
+    prm.declare_entry("modify_Reynolds",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether we want to change manually the "
+                      " Reynolds number. ");
 
     prm.declare_entry("save_for_restart",
                       "false",
@@ -228,6 +234,8 @@ namespace RunTimeParameters {
     restart = prm.get_bool("restart");
 
     as_initial_conditions = prm.get_bool("as_initial_conditions");
+
+    modify_Reynolds = prm.get_bool("modify_Reynolds");
 
     save_for_restart = prm.get_bool("save_for_restart");
   }
