@@ -3258,14 +3258,13 @@ namespace NS_TRBDF2 {
     cylinder_points.clear();
 
     for(unsigned int i = 0; i < n_points; ++i){
-      angle = 2. * numbers::PI * i / n_points;
-      Point<dim> p(0.05*std::cos(angle)+0.2, 0.05*std::sin(angle)+0.2);
+      angle = numbers::PI * i / n_points;
+      Point<dim> p(0.2 - 0.05*std::cos(angle), 0.2 + 0.05*std::sin(angle));
       if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
           GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         cylinder_points.push_back(p);
       }
     }
-
   }
 
   template<int dim>
@@ -3745,7 +3744,7 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
-    initialize_points_around_cylinder(360);
+    initialize_points_around_cylinder(180);
 
     double height;
     double length;
