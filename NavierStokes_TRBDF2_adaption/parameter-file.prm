@@ -28,16 +28,17 @@ subsection Data solve
   # In this section we declare the parameters that are going to control the solution process
   # for the velocity.
   set max_iterations = 10000  # maximal number of iterations that linear solvers must make
-  set eps            = 1e-8  # stopping criterion
-  set step_restart   = 4000
+  set eps = 1e-8  # stopping criterion
+  set step_restart = 4000 # Specify the number to search for the restart data
+  set tolerance_fixed_point = 1e-8 # Set tolerance of fixed point
 end
 
-set saving directory = Re3900_DNS_restart_4ref_free_slip
+set saving directory = Re3900_DNS_restart_4ref_free_slip_rhs_flux_tolerance_fixed_point
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 100
+set output_interval = 650
 
 #Finally we set the verbosity level
 set verbose = true

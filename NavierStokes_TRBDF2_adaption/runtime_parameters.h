@@ -32,6 +32,7 @@ namespace RunTimeParameters {
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
     double       eps;
+    double       tolerance_fixed_point;
 
     bool         verbose;
     unsigned int output_interval;
@@ -40,13 +41,13 @@ namespace RunTimeParameters {
 
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
 
+    /*--- Auxiliary parameters related to restart ---*/
     bool         restart;
-    bool         as_initial_conditions;
-    bool         modify_Reynolds;
+    bool         save_for_restart;
     unsigned int step_restart;
     double       time_restart;
-
-    bool         save_for_restart;
+    bool         as_initial_conditions;
+    bool         modify_Reynolds;
 
   protected:
     ParameterHandler prm;
@@ -64,9 +65,16 @@ namespace RunTimeParameters {
                                 big_domain(false),
                                 max_iterations(1000),
                                 eps(1e-12),
+                                tolerance_fixed_point(1e-6),
                                 verbose(true),
                                 output_interval(15),
-                                refinement_iterations(0) {
+                                refinement_iterations(0),
+                                restart(false),
+                                save_for_restart(false),
+                                step_restart(0),
+                                time_restart(0.0),
+                                as_initial_conditions(false),
+                                modify_Reynolds(false) {
     prm.enter_subsection("Physical data");
     {
       prm.declare_entry("initial_time",
@@ -118,7 +126,7 @@ namespace RunTimeParameters {
       prm.declare_entry("big_domain",
                         "false",
                         Patterns::Bool(),
-                        " This flag decides if the mesh is chosen small or big. ");
+                        " This flag decides if the domain is chosen small or big. ");
     }
     prm.leave_subsection();
 
@@ -136,6 +144,10 @@ namespace RunTimeParameters {
                         "1",
                          Patterns::Integer(1, 100000000),
                          " The step at which restart occurs");
+      prm.declare_entry("tolerance_fixed_point",
+                        "1e-8",
+                         Patterns::Double(0.0),
+                         " The tolerance of the fixed point loop");
     }
     prm.leave_subsection();
 
@@ -164,6 +176,11 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether we are in presence of a "
                       "restart or not. ");
+    prm.declare_entry("save_for_restart",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether we want to save for possible "
+                      "restart or not. ");
     prm.declare_entry("as_initial_conditions",
                       "false",
                       Patterns::Bool(),
@@ -174,12 +191,6 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether we want to change manually the "
                       " Reynolds number. ");
-
-    prm.declare_entry("save_for_restart",
-                      "false",
-                      Patterns::Bool(),
-                      " This indicates whether we want to save for possible "
-                      "restart or not. ");
   }
 
   // We need now a routine to read all declared parameters in the constructor
@@ -211,15 +222,16 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
-      big_domain            = prm.get_bool("big_domain");
+      big_domain          = prm.get_bool("big_domain");
     }
     prm.leave_subsection();
 
     prm.enter_subsection("Data solve");
     {
-      max_iterations = prm.get_integer("max_iterations");
-      eps            = prm.get_double("eps");
-      step_restart   = prm.get_integer("step_restart");
+      max_iterations        = prm.get_integer("max_iterations");
+      eps                   = prm.get_double("eps");
+      step_restart          = prm.get_integer("step_restart");
+      tolerance_fixed_point = prm.get_double("tolerance_fixed_point");
     }
     prm.leave_subsection();
 
@@ -231,13 +243,11 @@ namespace RunTimeParameters {
 
     output_interval = prm.get_integer("output_interval");
 
-    restart = prm.get_bool("restart");
-
+    /*--- Read parameters related to restart ---*/
+    restart               = prm.get_bool("restart");
+    save_for_restart      = prm.get_bool("save_for_restart");
     as_initial_conditions = prm.get_bool("as_initial_conditions");
-
-    modify_Reynolds = prm.get_bool("modify_Reynolds");
-
-    save_for_restart = prm.get_bool("save_for_restart");
+    modify_Reynolds       = prm.get_bool("modify_Reynolds");
   }
 
 } // namespace RunTimeParameters

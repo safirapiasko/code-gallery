@@ -659,8 +659,12 @@ namespace NS_TRBDF2 {
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          phi_p.submit_value((a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
-          phi_m.submit_value(-(a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
+          const auto  lambda               = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
+                                                      std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
+          const auto& jump_u = phi_old_p.get_value(q) - phi_old_m.get_value(q);
+
+          phi_p.submit_value((a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus - a21 * 0.5 * lambda * jump_u, q);
+          phi_m.submit_value(-(a21*avg_visc_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus + a21 * 0.5 * lambda * jump_u, q);
 
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
@@ -723,11 +727,20 @@ namespace NS_TRBDF2 {
                                                           outer_product(phi_int_m.get_value(q), phi_int_m.get_value(q)));
           const auto& avg_p_old                    = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
+          const auto  lambda_old               = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
+                                                     std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
+         const auto  lambda_int               = std::max(std::abs(scalar_product(phi_int_p.get_value(q), n_plus)),
+                                                     std::abs(scalar_product(phi_int_m.get_value(q), n_plus)));
+         const auto& jump_u_old = phi_old_p.get_value(q) - phi_old_m.get_value(q);
+         const auto& jump_u_int = phi_int_p.get_value(q) - phi_int_m.get_value(q);
+
 
           phi_p.submit_value((a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
-                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus -
+                              a31*0.5*lambda_old*jump_u_old - a32*0.5*lambda_int*jump_u_int, q);
           phi_m.submit_value(-(a31*avg_visc_grad_u_old + a32*avg_visc_grad_u_int -
-                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus +
+                              a31*0.5*lambda_old*jump_u_old + a32*0.5*lambda_int*jump_u_int, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -800,10 +813,14 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
           const auto lambda                 = (boundary_id == 1 || boundary_id == 3) ?
                                               0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+          const auto lambda_old             = (boundary_id == 1 || boundary_id == 3) ?
+                                              0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& jump_u_old = phi_old.get_value(q) - u_int_m;
+
 
           phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
                           p_old*n_plus + a22*2.0 * viscosity.value(point_vectorized, grad_u_old, dx, Re) *coef_jump*u_int_m -
-                          aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
+                          aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m - a21 * lambda_old * jump_u_old, q);
           phi.submit_gradient(-aux_coeff*theta_v*a22*viscosity.value(point_vectorized, grad_u_old, dx, Re)*(outer_product(u_int_m, n_plus)+outer_product(n_plus, u_int_m)), q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -863,6 +880,10 @@ namespace NS_TRBDF2 {
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
           const auto lambda             = (boundary_id == 1 || boundary_id == 3) ?
                                           0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
+          const auto lambda_old             = (boundary_id == 1 || boundary_id == 3) ? 0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto lambda_int             = (boundary_id == 1 || boundary_id == 3) ? 0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
+          const auto& jump_u_old = phi_old.get_value(q) - u_m;
+          const auto& jump_u_int = phi_int.get_value(q) - u_m;
 
           const auto& visc_int = viscosity.value(point_vectorized, grad_u_int, dx, Re);
           const auto& visc_old = viscosity.value(point_vectorized, grad_u_old, dx, Re);
@@ -870,7 +891,8 @@ namespace NS_TRBDF2 {
           phi.submit_value((a31*visc_old*grad_u_old + a32*visc_int*grad_u_int -
                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
                           a33*visc_int*2.0*coef_jump*u_m -
-                          aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m, q);
+                          aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m -
+                          a31 * lambda_old * jump_u_old - a32 * lambda_int * jump_u_int, q);
           phi.submit_gradient(-aux_coeff*theta_v*a33*visc_int*(outer_product(u_m, n_plus)+outer_product(n_plus, u_m)), q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -2361,7 +2383,8 @@ namespace NS_TRBDF2 {
           u^(n+gamma) and other two auxiliary vectors as well as the rhs ---*/
     LinearAlgebra::distributed::Vector<double> u_n;
     LinearAlgebra::distributed::Vector<double> u_n_minus_1;
-    LinearAlgebra::distributed::Vector<double> u_extr;
+    LinearAlgebra::distributed::Vector<double> u_n_k;
+    LinearAlgebra::distributed::Vector<double> u_n_gamma_k;
     LinearAlgebra::distributed::Vector<double> u_n_gamma;
     LinearAlgebra::distributed::Vector<double> u_star;
     LinearAlgebra::distributed::Vector<double> u_tmp;
@@ -2399,8 +2422,6 @@ namespace NS_TRBDF2 {
     void setup_dofs();
 
     void initialize();
-
-    void interpolate_velocity();
 
     void diffusion_step();
 
@@ -2477,6 +2498,7 @@ namespace NS_TRBDF2 {
     double       time_restart;
     bool         as_initial_conditions;
     bool         modify_Reynolds;
+    double       tolerance_fixed_point;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2543,6 +2565,7 @@ namespace NS_TRBDF2 {
     save_for_restart(data.save_for_restart),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
+    tolerance_fixed_point(data.tolerance_fixed_point),
     pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
     time_out("./" + data.dir + "/time_analysis_" +
              Utilities::int_to_string(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)) + "proc.dat"),
@@ -2747,7 +2770,8 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(u_star, 0);
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
-    matrix_free_storage->initialize_dof_vector(u_extr, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_k, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_gamma_k, 0);
     matrix_free_storage->initialize_dof_vector(u_n_minus_1, 0);
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
@@ -2891,26 +2915,6 @@ namespace NS_TRBDF2 {
   }
 
 
-  // This function computes the extrapolated velocity to be used in the momentum predictor
-  //
-  template<int dim>
-  void NavierStokesProjection<dim>::interpolate_velocity() {
-    TimerOutput::Scope t(time_table, "Interpolate velocity");
-
-    //--- TR-BDF2 first step
-    if(TR_BDF2_stage == 1) {
-      u_extr.equ(1.0 + gamma/(2.0*(1.0 - gamma)), u_n);
-      u_tmp.equ(gamma/(2.0*(1.0 - gamma)), u_n_minus_1);
-      u_extr -= u_tmp;
-    }
-    //--- TR-BDF2 second step
-    else {
-      u_extr.equ(1.0 + (1.0 - gamma)/gamma, u_n_gamma);
-      u_tmp.equ((1.0 - gamma)/gamma, u_n);
-      u_extr -= u_tmp;
-    }
-  }
-
 
   // We are finally ready to solve the diffusion step.
   //
@@ -2930,31 +2934,66 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n, deltas});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n, pres_n, deltas});
+      u_n_k = u_n;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr, deltas});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_n_gamma, deltas});
+      u_n_gamma_k = u_n_gamma;
     }
 
-    /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
-    SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
-    SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
+    for (unsigned int itr = 0; itr < 100; itr++)
+    {
+      if(TR_BDF2_stage == 1) {
+        navier_stokes_matrix.set_u_extr(u_n_k);
+        u_star = u_n_k;
+      }
+      else {
+        navier_stokes_matrix.set_u_extr(u_n_gamma_k);
+        u_star = u_n_gamma_k;
+      }
 
-    /*--- Build a Jacobi preconditioner and solve ---*/
-    PreconditionJacobi<NavierStokesProjectionOperator<dim,
-                                                      EquationData::degree_p,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 2,
-                                                      LinearAlgebra::distributed::Vector<double>>> preconditioner;
-    navier_stokes_matrix.compute_diagonal();
-    preconditioner.initialize(navier_stokes_matrix);
+      /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
+      SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
+      SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
 
-    gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+      /*--- Build a Jacobi preconditioner and solve ---*/
+      PreconditionJacobi<NavierStokesProjectionOperator<dim,
+                                                        EquationData::degree_p,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 2,
+                                                        LinearAlgebra::distributed::Vector<double>>> preconditioner;
+      navier_stokes_matrix.compute_diagonal();
+      preconditioner.initialize(navier_stokes_matrix);
+
+      gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+
+      //Compute the relative error
+      VectorTools::integrate_difference(dof_handler_velocity, u_star, ZeroFunction<dim>(dim),
+                                        Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+      const double den = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm);
+      double error = 0.0;
+      u_tmp = u_star;
+      if(TR_BDF2_stage == 1) {
+        u_tmp -= u_n_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_k = u_star;
+      }
+      else {
+        u_tmp -= u_n_gamma_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_gamma_k = u_star;
+      }
+      if(error < tolerance_fixed_point)
+        break;
+    }
+
+
   }
 
 
@@ -3789,9 +3828,6 @@ namespace NS_TRBDF2 {
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
 
-      verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
-      interpolate_velocity();
-
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
       diffusion_step();
 
@@ -3815,8 +3851,6 @@ namespace NS_TRBDF2 {
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
 
-      verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
-      interpolate_velocity();
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
       diffusion_step();

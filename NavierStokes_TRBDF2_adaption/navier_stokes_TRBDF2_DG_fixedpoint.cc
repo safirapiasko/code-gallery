@@ -3880,12 +3880,12 @@ namespace NS_TRBDF2 {
       }
       /*--- Modify the Reynolds number if desired ---*/
       if(modify_Reynolds) {
-        if(restart && time <= time_restart + 0.05) {
+        if(restart && time <= time_restart + 0.05 + 1e-10) {
           const double Re_tmp = (time - time_restart)/(0.05)*(3800.0) + 100.0;
           navier_stokes_matrix.set_Reynolds(Re_tmp);
           verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
         }
-        if(!restart && time <= t_0 + dt + 0.05) {
+        if(!restart && time <= t_0 + dt + 0.05 + 1e-10) {
           const double Re_tmp = (time - t_0 - dt)/(0.05)*(3800.0) + 100.0;
           navier_stokes_matrix.set_Reynolds(Re_tmp);
           verbose_cout << "Reynolds set to " << Re_tmp << std::endl;
