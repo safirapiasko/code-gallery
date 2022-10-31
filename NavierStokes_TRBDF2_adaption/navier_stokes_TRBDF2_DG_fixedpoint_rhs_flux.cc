@@ -656,7 +656,7 @@ namespace NS_TRBDF2 {
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
           /*--- Compute data for upwind flux ---*/
-          const auto&  lambda                = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
+          const auto& lambda                 = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
                                                         std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
           const auto& jump_u                 = phi_old_p.get_value(q) - phi_old_m.get_value(q);
 
@@ -707,7 +707,7 @@ namespace NS_TRBDF2 {
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus                      = phi_p.get_normal_vector(q);
 
-          const auto& dx_p = phi_deltas_p.get_value(q);
+          const auto& dx_p                        = phi_deltas_p.get_value(q);
           const auto& dx_m                        = phi_deltas_m.get_value(q);
           const auto& point_vectorized_p          = phi_p.quadrature_point(q);
           const auto& point_vectorized_m          = phi_m.quadrature_point(q);
@@ -2083,7 +2083,7 @@ namespace NS_TRBDF2 {
               const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
               const auto& point_vectorized = phi.quadrature_point(q);
-              const auto& dx                = phi_deltas.get_value(q);
+              const auto& dx               = phi_deltas.get_value(q);
 
               phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                               a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
@@ -2587,8 +2587,6 @@ namespace NS_TRBDF2 {
     step_restart(data.step_restart),
     time_restart(data.time_restart),
     modify_Reynolds(data.modify_Reynolds),
-    step_restart(data.step_restart),
-    time_restart(data.time_restart),
     pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
     time_out("./" + data.dir + "/time_analysis_" +
              Utilities::int_to_string(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)) + "proc.dat"),
