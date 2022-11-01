@@ -2,14 +2,14 @@ subsection Physical data
   # In this subsection we declare the physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
-  set final_time   = 5.0
+  set final_time   = 1.0
   set Reynolds     = 3900.0
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt           = 2.0e-3
+  set dt           = 2.0e-2
   set time_restart = 0.0
 end
 
@@ -28,14 +28,15 @@ subsection Data solve
   set max_iterations = 10000  # maximal number of iterations that linear solvers must make
   set eps            = 1e-8  # stopping criterion
   set step_restart   = 4000
+  set tolerance_fixed_point = 1e-8
 end
 
-set saving directory = Re3900_DNS_3ref_free_slip_extr_scale
+set saving directory = Re3900_DNS_3ref_free_slip_fix_scale
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 500
+set output_interval = 5
 
 #Finally we set the verbosity level
 set verbose = true

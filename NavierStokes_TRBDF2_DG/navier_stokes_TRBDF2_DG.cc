@@ -707,12 +707,10 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-          const auto lambda                 = (boundary_id == 1 || boundary_id == 3) ?
-                                              0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
           phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
                            a22/Re*2.0*coef_jump*u_int_m -
-                           aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
+                           aux_coeff*a22*tensor_product_u_int_m*n_plus, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*u_int_m, q); /*--- This is equivalent to multiply to the gradient
                                                                                     with outer product and use 'submit_gradient' ---*/
         }
@@ -765,13 +763,11 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
-          const auto lambda             = (boundary_id == 1 || boundary_id == 3) ?
-                                          0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
                            a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
                            a33/Re*2.0*coef_jump*u_m -
-                           aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m, q);
+                           aux_coeff*a33*tensor_product_u_m*n_plus, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*u_m, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1024,13 +1020,11 @@ namespace NS_TRBDF2 {
           const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
           const auto& avg_tensor_product_u_int = 0.5*(outer_product(phi_p.get_value(q), phi_old_extr_p.get_value(q)) +
                                                       outer_product(phi_m.get_value(q), phi_old_extr_m.get_value(q)));
-          const auto  lambda                   = std::max(std::abs(scalar_product(phi_old_extr_p.get_value(q), n_plus)),
-                                                          std::abs(scalar_product(phi_old_extr_m.get_value(q), n_plus)));
 
           phi_p.submit_value(a22/Re*(-avg_grad_u_int*n_plus + coef_jump*jump_u_int) +
-                             a22*avg_tensor_product_u_int*n_plus + 0.5*a22*lambda*jump_u_int, q);
+                             a22*avg_tensor_product_u_int*n_plus, q);
           phi_m.submit_value(-a22/Re*(-avg_grad_u_int*n_plus + coef_jump*jump_u_int) -
-                              a22*avg_tensor_product_u_int*n_plus - 0.5*a22*lambda*jump_u_int, q);
+                              a22*avg_tensor_product_u_int*n_plus, q);
           phi_p.submit_normal_derivative(-theta_v*a22/Re*0.5*jump_u_int, q);
           phi_m.submit_normal_derivative(-theta_v*a22/Re*0.5*jump_u_int, q);
         }
@@ -1067,13 +1061,11 @@ namespace NS_TRBDF2 {
           const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
           const auto& avg_tensor_product_u = 0.5*(outer_product(phi_p.get_value(q), phi_extr_p.get_value(q)) +
                                                   outer_product(phi_m.get_value(q), phi_extr_m.get_value(q)));
-          const auto  lambda               = std::max(std::abs(scalar_product(phi_extr_p.get_value(q), n_plus)),
-                                                      std::abs(scalar_product(phi_extr_m.get_value(q), n_plus)));
 
           phi_p.submit_value(a33/Re*(-avg_grad_u*n_plus + coef_jump*jump_u) +
-                             a33*avg_tensor_product_u*n_plus + 0.5*a33*lambda*jump_u, q);
+                             a33*avg_tensor_product_u*n_plus, q);
           phi_m.submit_value(-a33/Re*(-avg_grad_u*n_plus + coef_jump*jump_u) -
-                              a33*avg_tensor_product_u*n_plus - 0.5*a33*lambda*jump_u, q);
+                              a33*avg_tensor_product_u*n_plus, q);
           phi_p.submit_normal_derivative(-theta_v*a33/Re*0.5*jump_u, q);
           phi_m.submit_normal_derivative(-theta_v*a33/Re*0.5*jump_u, q);
         }
@@ -1118,10 +1110,9 @@ namespace NS_TRBDF2 {
             const auto& grad_u_int           = phi.get_gradient(q);
             const auto& u_int                = phi.get_value(q);
             const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
-            const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
             phi.submit_value(a22/Re*(-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
-                             a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
+                             a22*coef_trasp*tensor_product_u_int*n_plus, q);
             phi.submit_normal_derivative(-theta_v*a22/Re*u_int, q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1132,7 +1123,6 @@ namespace NS_TRBDF2 {
             const auto& n_plus               = phi.get_normal_vector(q);
             const auto& grad_u_int           = phi.get_gradient(q);
             const auto& u_int                = phi.get_value(q);
-            const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
             const auto& point_vectorized     = phi.quadrature_point(q);
             auto u_int_m                     = u_int;
@@ -1149,8 +1139,7 @@ namespace NS_TRBDF2 {
             }
 
             phi.submit_value(a22/Re*(-(0.5*(grad_u_int + grad_u_int_m))*n_plus + coef_jump*(u_int - u_int_m)) +
-                             a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
-                             a22*0.5*lambda*(u_int - u_int_m), q);
+                             a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus, q);
             phi.submit_normal_derivative(-theta_v*a22/Re*(u_int - u_int_m), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1181,10 +1170,9 @@ namespace NS_TRBDF2 {
             const auto& grad_u           = phi.get_gradient(q);
             const auto& u                = phi.get_value(q);
             const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
-            const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
             phi.submit_value(a33/Re*(-grad_u*n_plus + 2.0*coef_jump*u) +
-                             a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
+                             a33*coef_trasp*tensor_product_u*n_plus, q);
             phi.submit_normal_derivative(-theta_v*a33/Re*u, q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1195,7 +1183,6 @@ namespace NS_TRBDF2 {
             const auto& n_plus           = phi.get_normal_vector(q);
             const auto& grad_u           = phi.get_gradient(q);
             const auto& u                = phi.get_value(q);
-            const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
             const auto& point_vectorized = phi.quadrature_point(q);
             auto u_m                     = u;
@@ -1212,7 +1199,7 @@ namespace NS_TRBDF2 {
             }
 
             phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
-                             a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus + a33*0.5*lambda*(u - u_m), q);
+                             a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus, q);
             phi.submit_normal_derivative(-theta_v*a33/Re*(u - u_m), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -2107,6 +2094,8 @@ namespace NS_TRBDF2 {
     LinearAlgebra::distributed::Vector<double> u_n;
     LinearAlgebra::distributed::Vector<double> u_n_minus_1;
     LinearAlgebra::distributed::Vector<double> u_extr;
+    LinearAlgebra::distributed::Vector<double> u_n_k;
+    LinearAlgebra::distributed::Vector<double> u_n_gamma_k;
     LinearAlgebra::distributed::Vector<double> u_n_gamma;
     LinearAlgebra::distributed::Vector<double> u_star;
     LinearAlgebra::distributed::Vector<double> u_tmp;
@@ -2175,6 +2164,7 @@ namespace NS_TRBDF2 {
     /*--- Now a bunch of variables handled by 'ParamHandler' introduced at the beginning of the code ---*/
     unsigned int max_its;
     double       eps;
+    double       tolerance_fixed_point;
     unsigned int n_refines;
 
     unsigned int max_loc_refinements;
@@ -2230,6 +2220,7 @@ namespace NS_TRBDF2 {
     navier_stokes_matrix(data),
     max_its(data.max_iterations),
     eps(data.eps),
+    tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
@@ -2424,6 +2415,8 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
     matrix_free_storage->initialize_dof_vector(u_extr, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_k, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_gamma_k, 0);
     matrix_free_storage->initialize_dof_vector(u_n_minus_1, 0);
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
@@ -2584,31 +2577,64 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n, pres_n});
+      u_n_k = u_n;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_n_gamma});
+      u_n_k = u_n;
     }
 
-    /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
-    SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
-    SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
+    for (unsigned int iter = 0; iter < 100; ++iter) {
+      if(TR_BDF2_stage == 1) {
+        navier_stokes_matrix.set_u_extr(u_n_k);
+        u_star = u_n_k;
+      }
+      else {
+        navier_stokes_matrix.set_u_extr(u_n_gamma_k);
+        u_star = u_n_gamma_k;
+      }
 
-    /*--- Build a Jacobi preconditioner and solve ---*/
-    PreconditionJacobi<NavierStokesProjectionOperator<dim,
-                                                      EquationData::degree_p,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 2,
-                                                      LinearAlgebra::distributed::Vector<double>>> preconditioner;
-    navier_stokes_matrix.compute_diagonal();
-    preconditioner.initialize(navier_stokes_matrix);
+      /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
+      SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
+      SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
 
-    gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+      /*--- Build a Jacobi preconditioner and solve ---*/
+      PreconditionJacobi<NavierStokesProjectionOperator<dim,
+                                                        EquationData::degree_p,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 2,
+                                                        LinearAlgebra::distributed::Vector<double>>> preconditioner;
+
+      navier_stokes_matrix.compute_diagonal();
+      preconditioner.initialize(navier_stokes_matrix);
+
+      gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+
+      //Compute the relative error
+      VectorTools::integrate_difference(dof_handler_velocity, u_star, ZeroFunction<dim>(dim),
+                                        Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+      const double den = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm);
+      double error = 0.0;
+      u_tmp = u_star;
+      if(TR_BDF2_stage == 1) {
+        u_tmp -= u_n_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_k = u_star;
+      }
+      else {
+        u_tmp -= u_n_gamma_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_gamma_k = u_star;
+      }
+      if(error < tolerance_fixed_point)
+        break;
+    }
   }
 
 

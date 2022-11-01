@@ -30,6 +30,7 @@ namespace RunTimeParameters {
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
     double       eps;
+    double       tolerance_fixed_point;
 
     bool         verbose;
     unsigned int output_interval;
@@ -60,6 +61,7 @@ namespace RunTimeParameters {
                                 min_loc_refinements(0),
                                 max_iterations(1000),
                                 eps(1e-12),
+                                tolerance_fixed_point(1e-6),
                                 verbose(true),
                                 output_interval(15),
                                 refinement_iterations(0),
@@ -129,6 +131,10 @@ namespace RunTimeParameters {
                         "1",
                          Patterns::Integer(1, 100000000),
                          " The step at which restart occurs");
+      prm.declare_entry("tolerance_fixed_point",
+                        "1e-8",
+                         Patterns::Double(0.0),
+                         " The tolerance of the fixed point loop");
     }
     prm.leave_subsection();
 
@@ -205,6 +211,7 @@ namespace RunTimeParameters {
       max_iterations        = prm.get_integer("max_iterations");
       eps                   = prm.get_double("eps");
       step_restart          = prm.get_integer("step_restart");
+      tolerance_fixed_point = prm.get_double("tolerance_fixed_point");
     }
     prm.leave_subsection();
 
