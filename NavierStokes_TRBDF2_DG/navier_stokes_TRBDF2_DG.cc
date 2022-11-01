@@ -596,8 +596,13 @@ namespace NS_TRBDF2 {
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
-          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
+          /*--- Compute data for upwind flux ---*/
+          const auto& lambda                 = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
+                                                        std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
+          const auto& jump_u                 = phi_old_p.get_value(q) - phi_old_m.get_value(q);
+
+          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus - a21*0.5*lambda*jump_u, q);
+          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus + a21*0.5*lambda*jump_u, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -643,10 +648,20 @@ namespace NS_TRBDF2 {
                                                           outer_product(phi_int_m.get_value(q), phi_int_m.get_value(q)));
           const auto& avg_p_old                    = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
+          /*--- Compute data for upwind flux ---*/
+          const auto& lambda_old                   = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
+                                                              std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
+          const auto& lambda_int                   = std::max(std::abs(scalar_product(phi_int_p.get_value(q), n_plus)),
+                                                              std::abs(scalar_product(phi_int_m.get_value(q), n_plus)));
+          const auto& jump_u_old                   = phi_old_p.get_value(q) - phi_old_m.get_value(q);
+          const auto& jump_u_int                   = phi_int_p.get_value(q) - phi_int_m.get_value(q);
+
           phi_p.submit_value((a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
-                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus -
+                              a31*0.5*lambda_old*jump_u_old - a32*0.5*lambda_int*jump_u_int, q);
           phi_m.submit_value(-(a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
-                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
+                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus +
+                               a31*0.5*lambda_old*jump_u_old + a32*0.5*lambda_int*jump_u_int, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -708,9 +723,13 @@ namespace NS_TRBDF2 {
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
 
+          const auto& lambda_old            = (boundary_id == 1 || boundary_id == 3) ?
+                                               0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& jump_u_old            = phi_old.get_value(q) - u_int_m;
+
           phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
                            a22/Re*2.0*coef_jump*u_int_m -
-                           aux_coeff*a22*tensor_product_u_int_m*n_plus, q);
+                           aux_coeff*a22*tensor_product_u_int_m*n_plus - a21*lambda_old*jump_u_old, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*u_int_m, q); /*--- This is equivalent to multiply to the gradient
                                                                                     with outer product and use 'submit_gradient' ---*/
         }
@@ -764,10 +783,18 @@ namespace NS_TRBDF2 {
           }
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
 
+          const auto& lambda_old        = (boundary_id == 1 || boundary_id == 3) ?
+                                           0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& lambda_int        = (boundary_id == 1 || boundary_id == 3) ?
+                                           0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
+          const auto& jump_u_old        = phi_old.get_value(q) - u_m;
+          const auto& jump_u_int        = phi_int.get_value(q) - u_m;
+
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
                            a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
                            a33/Re*2.0*coef_jump*u_m -
-                           aux_coeff*a33*tensor_product_u_m*n_plus, q);
+                           aux_coeff*a33*tensor_product_u_m*n_plus -
+                           a31*lambda_old*jump_u_old - a32*lambda_int*jump_u_int, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*u_m, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
