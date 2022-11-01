@@ -9,7 +9,7 @@ end
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt           = 2.0e-2
+  set dt           = 2.0e-3
   set time_restart = 0.0
 end
 
@@ -28,15 +28,14 @@ subsection Data solve
   set max_iterations = 10000  # maximal number of iterations that linear solvers must make
   set eps            = 1e-8  # stopping criterion
   set step_restart   = 4000
-  set tolerance_fixed_point = 1e-8
 end
 
-set saving directory = Re3900_DNS_3ref_free_slip_fix_scale
+set saving directory = Re3900_DNS_3ref_free_slip_upw_scale
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 5
+set output_interval = 50
 
 #Finally we set the verbosity level
 set verbose = true
