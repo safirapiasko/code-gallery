@@ -62,6 +62,7 @@
 #include <deal.II/meshworker/mesh_loop.h>
 
 #include <deal.II/fe/mapping_q.h>
+#include <deal.II/grid/manifold_lib.h>
 
 #include "runtime_parameters.h"
 #include "equation_data.h"
@@ -681,8 +682,9 @@ namespace NS_TRBDF2 {
         phi.reinit(face);
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
-        const auto coef_jump   = (boundary_id == 1) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1) ? 0.0 : 1.0;
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -705,7 +707,8 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-          const auto lambda                 = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+          const auto lambda                 = (boundary_id == 1 || boundary_id == 3) ?
+                                              0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
           phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
                            a22/Re*2.0*coef_jump*u_int_m -
@@ -737,8 +740,9 @@ namespace NS_TRBDF2 {
         phi.reinit(face);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1) ? 0.0 : 1.0;
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -761,7 +765,8 @@ namespace NS_TRBDF2 {
             }
           }
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
-          const auto lambda             = (boundary_id == 1) ? 0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
+          const auto lambda             = (boundary_id == 1 || boundary_id == 3) ?
+                                          0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
                            a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
@@ -1104,7 +1109,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1167,7 +1172,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1683,7 +1688,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Loop over all dofs ---*/
@@ -1773,7 +1778,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Loop over all dofs ---*/
@@ -2170,6 +2175,7 @@ namespace NS_TRBDF2 {
     /*--- Now a bunch of variables handled by 'ParamHandler' introduced at the beginning of the code ---*/
     unsigned int max_its;
     double       eps;
+    unsigned int n_refines;
 
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
@@ -2181,6 +2187,7 @@ namespace NS_TRBDF2 {
                  save_for_restart;
     unsigned int step_restart;
     double       time_restart;
+    bool         as_initial_conditions;
 
     /*--- Finally, some output related streams ---*/
     ConditionalOStream pcout;
@@ -2223,6 +2230,7 @@ namespace NS_TRBDF2 {
     navier_stokes_matrix(data),
     max_its(data.max_iterations),
     eps(data.eps),
+    n_refines(data.n_refines),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -2231,6 +2239,7 @@ namespace NS_TRBDF2 {
     save_for_restart(data.save_for_restart),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
+    as_initial_conditions(data.as_initial_conditions),
     pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
     time_out("./" + data.dir + "/time_analysis_" +
              Utilities::int_to_string(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)) + "proc.dat"),
@@ -2251,7 +2260,7 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      create_triangulation(data.n_refines);
+      create_triangulation(n_refines);
       setup_dofs();
       initialize();
   }
@@ -2264,8 +2273,84 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::create_triangulation(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
 
-    GridGenerator::plate_with_a_hole(triangulation, 0.5, 1.0, 1.0, 1.1, 1.0, 19.0, Point<2>(2.0, 2.0), 0, 1, 1.0, 2, true);
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD),
+                                              tria8(MPI_COMM_WORLD),
+                                              triangulation_tmp(MPI_COMM_WORLD);
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+
+    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                              Point<dim>(0.0, 0.8),
+                                              Point<dim>(0.8, 1.21));
+
+    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1e-8, true);
+
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(3.0, 0.8));
+
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                              Point<dim>(0.0, 1.21),
+                                              Point<dim>(3.0, 1.94));
+
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.02),
+                                              Point<dim>(3.0, 0.06));
+
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                              Point<dim>(0.0, 1.94),
+                                              Point<dim>(3.0, 1.98));
+
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(3.0, 0.02));
+
+    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                              Point<dim>(0.0, 1.98),
+                                              Point<dim>(3.0, 2.0));
+
+    GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                        triangulation, 1e-8, true);
+
+    GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
+
+    /*--- Attach manifold (manifold ids are already copied) ---*/
+    triangulation.set_manifold(0, PolarManifold<2>(Point<2>(10.0, 10.0)));
+    TransfiniteInterpolationManifold<2> inner_manifold;
+    inner_manifold.initialize(triangulation);
+    triangulation.set_manifold(1, inner_manifold);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(face->manifold_id() == 0)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
 
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -2414,6 +2499,42 @@ namespace NS_TRBDF2 {
 
       solution_transfer_velocity.deserialize(velocities);
       solution_transfer_pressure.deserialize(pres_n);
+
+      if(n_refines - (triangulation.n_global_levels() - 1) > 0) {
+        std::vector<const LinearAlgebra::distributed::Vector<double>*> velocities_tmp;
+        velocities_tmp.push_back(&u_n);
+        velocities_tmp.push_back(&u_n_minus_1);
+
+        solution_transfer_velocity.prepare_for_coarsening_and_refinement(velocities_tmp);
+        solution_transfer_pressure.prepare_for_coarsening_and_refinement(pres_n);
+
+        triangulation.refine_global(n_refines - (triangulation.n_global_levels() - 1));
+
+        setup_dofs();
+
+        LinearAlgebra::distributed::Vector<double> transfer_velocity,
+                                                   transfer_velocity_minus_1,
+                                                   transfer_pressure;
+        transfer_velocity.reinit(u_n);
+        transfer_velocity.zero_out_ghost_values();
+        transfer_velocity_minus_1.reinit(u_n_minus_1);
+        transfer_velocity_minus_1.zero_out_ghost_values();
+        transfer_pressure.reinit(pres_n);
+        transfer_pressure.zero_out_ghost_values();
+
+        std::vector<LinearAlgebra::distributed::Vector<double>*> transfer_velocities;
+        transfer_velocities.push_back(&transfer_velocity);
+        transfer_velocities.push_back(&transfer_velocity_minus_1);
+        solution_transfer_velocity.interpolate(transfer_velocities);
+        transfer_velocity.update_ghost_values();
+        transfer_velocity_minus_1.update_ghost_values();
+        solution_transfer_pressure.interpolate(transfer_pressure);
+        transfer_pressure.update_ghost_values();
+
+        u_n         = transfer_velocity;
+        u_n_minus_1 = transfer_velocity_minus_1;
+        pres_n      = transfer_pressure;
+      }
     }
     else {
       VectorTools::interpolate(dof_handler_pressure, pres_init, pres_n);
@@ -2653,8 +2774,7 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity, u_n, postprocessor);
 
-    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
-                           EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ1<dim>(), EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
     const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
@@ -2717,7 +2837,7 @@ namespace NS_TRBDF2 {
     for(const auto& cell : dof_handler_velocity.active_cell_iterators()) {
       if(cell->is_locally_owned()) {
         for(unsigned int face = 0; face < GeometryInfo<dim>::faces_per_cell; ++face) {
-          if(cell->face(face)->at_boundary() && cell->face(face)->boundary_id() == 4) {
+          if(cell->face(face)->at_boundary() && cell->face(face)->boundary_id() == 2) {
             fe_face_values_velocity.reinit(cell, face);
             fe_face_values_pressure.reinit(tmp_cell, face);
 
@@ -2931,7 +3051,67 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::save_max_res() {
     parallel::distributed::Triangulation<dim> triangulation_tmp(MPI_COMM_WORLD);
-    GridGenerator::plate_with_a_hole(triangulation_tmp, 0.5, 1.0, 1.0, 1.1, 1.0, 19.0, Point<2>(2.0, 2.0), 0, 1, 1.0, 2, true);
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD),
+                                              tria8(MPI_COMM_WORLD),
+                                              triangulation_tmp2(MPI_COMM_WORLD);
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+    GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                              Point<dim>(0.0, 0.8),
+                                              Point<dim>(0.8, 1.21));
+    GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp2, 1.e-12, true);
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(3.0, 0.8));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                              Point<dim>(0.0, 1.21),
+                                              Point<dim>(3.0, 1.94));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.02),
+                                              Point<dim>(3.0, 0.06));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                              Point<dim>(0.0, 1.94),
+                                              Point<dim>(3.0, 1.98));
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(3.0, 0.02));
+    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                              Point<dim>(0.0, 1.98),
+                                              Point<dim>(3.0, 2.0));
+    GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                        triangulation_tmp, 1e-12, true);
+    GridTools::scale(10.0, triangulation_tmp);
+    triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(10.0, 10.0)));
+    TransfiniteInterpolationManifold<2> inner_manifold;
+    inner_manifold.initialize(triangulation_tmp);
+    triangulation_tmp.set_manifold(1, inner_manifold);
+    for(const auto& face : triangulation_tmp.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(face->manifold_id() == 0)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
     triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
 
     DoFHandler<dim> dof_handler_velocity_tmp(triangulation_tmp);
@@ -2957,8 +3137,7 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity_tmp, u_n_tmp, postprocessor);
 
-    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
-			   EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
+    data_out.build_patches(MappingQ1<dim>(), EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
     const std::string output = "./" + saving_dir + "/solution_max_res_end.vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
   }
@@ -2980,7 +3159,7 @@ namespace NS_TRBDF2 {
 
     double time = t_0 + dt;
     unsigned int n = 1;
-    if(restart) {
+    if(restart && !as_initial_conditions) {
       n    = step_restart;
       time = time_restart;
     }

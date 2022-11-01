@@ -35,13 +35,9 @@ namespace EquationData {
 
   template<int dim>
   double Velocity<dim>::value(const Point<dim>& p, const unsigned int component) const {
-    AssertIndexRange(component, 3);
-    if(component == 0) {
-      const double Um = 1.5;
-      const double H  = 4.1;
-
-      return 4.0*Um*p(1)*(H - p(1))/(H*H);
-    }
+    AssertIndexRange(component, dim);
+    if(component == 0)
+      return 1.0;
     else
       return 0.0;
   }
@@ -77,7 +73,7 @@ namespace EquationData {
     (void)component;
     AssertIndexRange(component, 1);
 
-    return 22.0 - p(0);
+    return 30.0 - p(0);
   }
 
 } // namespace EquationData

@@ -38,11 +38,12 @@ namespace RunTimeParameters {
 
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
 
+    /*--- Auxiliary parameters related to restart ---*/
     bool         restart;
+    bool         save_for_restart;
     unsigned int step_restart;
     double       time_restart;
-
-    bool         save_for_restart;
+    bool         as_initial_conditions;
 
   protected:
     ParameterHandler prm;
@@ -61,7 +62,12 @@ namespace RunTimeParameters {
                                 eps(1e-12),
                                 verbose(true),
                                 output_interval(15),
-                                refinement_iterations(0) {
+                                refinement_iterations(0),
+                                restart(false),
+                                save_for_restart(false),
+                                step_restart(0),
+                                time_restart(0.0),
+                                as_initial_conditions(false) {
     prm.enter_subsection("Physical data");
     {
       prm.declare_entry("initial_time",
@@ -151,12 +157,16 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether we are in presence of a "
                       "restart or not. ");
-
     prm.declare_entry("save_for_restart",
                       "false",
                       Patterns::Bool(),
                       " This indicates whether we want to save for possible "
                       "restart or not. ");
+    prm.declare_entry("as_initial_conditions",
+                      "false",
+                      Patterns::Bool(),
+                      " This indicates whether restart is used as initial condition "
+                      "or to continue the simulation. ");
   }
 
   // We need now a routine to read all declared parameters in the constructor
@@ -192,9 +202,9 @@ namespace RunTimeParameters {
 
     prm.enter_subsection("Data solve");
     {
-      max_iterations = prm.get_integer("max_iterations");
-      eps            = prm.get_double("eps");
-      step_restart   = prm.get_integer("step_restart");
+      max_iterations        = prm.get_integer("max_iterations");
+      eps                   = prm.get_double("eps");
+      step_restart          = prm.get_integer("step_restart");
     }
     prm.leave_subsection();
 
@@ -206,9 +216,10 @@ namespace RunTimeParameters {
 
     output_interval = prm.get_integer("output_interval");
 
-    restart = prm.get_bool("restart");
-
-    save_for_restart = prm.get_bool("save_for_restart");
+    /*--- Read parameters related to restart ---*/
+    restart               = prm.get_bool("restart");
+    save_for_restart      = prm.get_bool("save_for_restart");
+    as_initial_conditions = prm.get_bool("as_initial_conditions");
   }
 
 } // namespace RunTimeParameters
