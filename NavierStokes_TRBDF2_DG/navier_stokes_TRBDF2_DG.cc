@@ -596,13 +596,8 @@ namespace NS_TRBDF2 {
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
           const auto& avg_p_old              = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          /*--- Compute data for upwind flux ---*/
-          const auto& lambda                 = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
-                                                        std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
-          const auto& jump_u                 = phi_old_p.get_value(q) - phi_old_m.get_value(q);
-
-          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus - a21*0.5*lambda*jump_u, q);
-          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus + a21*0.5*lambda*jump_u, q);
+          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus, q);
+          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -648,20 +643,10 @@ namespace NS_TRBDF2 {
                                                           outer_product(phi_int_m.get_value(q), phi_int_m.get_value(q)));
           const auto& avg_p_old                    = 0.5*(phi_old_press_p.get_value(q) + phi_old_press_m.get_value(q));
 
-          /*--- Compute data for upwind flux ---*/
-          const auto& lambda_old                   = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
-                                                              std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
-          const auto& lambda_int                   = std::max(std::abs(scalar_product(phi_int_p.get_value(q), n_plus)),
-                                                              std::abs(scalar_product(phi_int_m.get_value(q), n_plus)));
-          const auto& jump_u_old                   = phi_old_p.get_value(q) - phi_old_m.get_value(q);
-          const auto& jump_u_int                   = phi_int_p.get_value(q) - phi_int_m.get_value(q);
-
           phi_p.submit_value((a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
-                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus -
-                              a31*0.5*lambda_old*jump_u_old - a32*0.5*lambda_int*jump_u_int, q);
+                              a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus - avg_p_old*n_plus, q);
           phi_m.submit_value(-(a31/Re*avg_grad_u_old + a32/Re*avg_grad_u_int -
-                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus +
-                               a31*0.5*lambda_old*jump_u_old + a32*0.5*lambda_int*jump_u_int, q);
+                               a31*avg_tensor_product_u_n - a32*avg_tensor_product_u_n_gamma)*n_plus + avg_p_old*n_plus, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -723,13 +708,9 @@ namespace NS_TRBDF2 {
           }
           const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
 
-          const auto& lambda_old            = (boundary_id == 1 || boundary_id == 3) ?
-                                               0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& jump_u_old            = phi_old.get_value(q) - u_int_m;
-
           phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
                            a22/Re*2.0*coef_jump*u_int_m -
-                           aux_coeff*a22*tensor_product_u_int_m*n_plus - a21*lambda_old*jump_u_old, q);
+                           aux_coeff*a22*tensor_product_u_int_m*n_plus, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*u_int_m, q); /*--- This is equivalent to multiply to the gradient
                                                                                     with outer product and use 'submit_gradient' ---*/
         }
@@ -783,17 +764,10 @@ namespace NS_TRBDF2 {
           }
           const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
 
-          const auto& lambda_old        = (boundary_id == 1 || boundary_id == 3) ?
-                                           0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& lambda_int        = (boundary_id == 1 || boundary_id == 3) ?
-                                           0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
-          const auto& jump_u_old        = phi_old.get_value(q) - u_m;
-          const auto& jump_u_int        = phi_int.get_value(q) - u_m;
-
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
                            a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
                            a33/Re*2.0*coef_jump*u_m -
-                           aux_coeff*a33*tensor_product_u_m*n_plus - a31*lambda_old*jump_u_old - a32*lambda_int*jump_u_int, q);
+                           aux_coeff*a33*tensor_product_u_m*n_plus, q);
           phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*u_m, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1087,13 +1061,11 @@ namespace NS_TRBDF2 {
           const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
           const auto& avg_tensor_product_u = 0.5*(outer_product(phi_p.get_value(q), phi_extr_p.get_value(q)) +
                                                   outer_product(phi_m.get_value(q), phi_extr_m.get_value(q)));
-          const auto  lambda               = std::max(std::abs(scalar_product(phi_extr_p.get_value(q), n_plus)),
-                                                      std::abs(scalar_product(phi_extr_m.get_value(q), n_plus)));
 
           phi_p.submit_value(a33/Re*(-avg_grad_u*n_plus + coef_jump*jump_u) +
-                             a33*avg_tensor_product_u*n_plus + 0.5*a33*lambda*jump_u, q);
+                             a33*avg_tensor_product_u*n_plus, q);
           phi_m.submit_value(-a33/Re*(-avg_grad_u*n_plus + coef_jump*jump_u) -
-                              a33*avg_tensor_product_u*n_plus - 0.5*a33*lambda*jump_u, q);
+                              a33*avg_tensor_product_u*n_plus, q);
           phi_p.submit_normal_derivative(-theta_v*a33/Re*0.5*jump_u, q);
           phi_m.submit_normal_derivative(-theta_v*a33/Re*0.5*jump_u, q);
         }
@@ -1585,7 +1557,6 @@ namespace NS_TRBDF2 {
             const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
             const auto& avg_tensor_product_u_int = 0.5*(outer_product(phi_p.get_value(q), phi_old_extr_p.get_value(q)) +
                                                         outer_product(phi_m.get_value(q), phi_old_extr_m.get_value(q)));
-
             phi_p.submit_value(a22/Re*(-avg_grad_u_int*n_plus + coef_jump*jump_u_int) +
                                a22*avg_tensor_product_u_int*n_plus, q);
             phi_m.submit_value(-a22/Re*(-avg_grad_u_int*n_plus + coef_jump*jump_u_int) -
@@ -2112,6 +2083,8 @@ namespace NS_TRBDF2 {
     LinearAlgebra::distributed::Vector<double> u_n;
     LinearAlgebra::distributed::Vector<double> u_n_minus_1;
     LinearAlgebra::distributed::Vector<double> u_extr;
+    LinearAlgebra::distributed::Vector<double> u_n_k;
+    LinearAlgebra::distributed::Vector<double> u_n_gamma_k;
     LinearAlgebra::distributed::Vector<double> u_n_gamma;
     LinearAlgebra::distributed::Vector<double> u_star;
     LinearAlgebra::distributed::Vector<double> u_tmp;
@@ -2180,6 +2153,7 @@ namespace NS_TRBDF2 {
     /*--- Now a bunch of variables handled by 'ParamHandler' introduced at the beginning of the code ---*/
     unsigned int max_its;
     double       eps;
+    double       tolerance_fixed_point;
     unsigned int n_refines;
 
     unsigned int max_loc_refinements;
@@ -2235,6 +2209,7 @@ namespace NS_TRBDF2 {
     navier_stokes_matrix(data),
     max_its(data.max_iterations),
     eps(data.eps),
+    tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
@@ -2429,6 +2404,8 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
     matrix_free_storage->initialize_dof_vector(u_extr, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_k, 0);
+    matrix_free_storage->initialize_dof_vector(u_n_gamma_k, 0);
     matrix_free_storage->initialize_dof_vector(u_n_minus_1, 0);
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
@@ -2589,31 +2566,64 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n, pres_n});
+      u_n_k = u_n;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr});
-      navier_stokes_matrix.set_u_extr(u_extr);
-      u_star = u_extr;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_n_gamma});
+      u_n_k = u_n;
     }
 
-    /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
-    SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
-    SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
+    for (unsigned int iter = 0; iter < 100; ++iter) {
+      if(TR_BDF2_stage == 1) {
+        navier_stokes_matrix.set_u_extr(u_n_k);
+        u_star = u_n_k;
+      }
+      else {
+        navier_stokes_matrix.set_u_extr(u_n_gamma_k);
+        u_star = u_n_gamma_k;
+      }
 
-    /*--- Build a Jacobi preconditioner and solve ---*/
-    PreconditionJacobi<NavierStokesProjectionOperator<dim,
-                                                      EquationData::degree_p,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 1,
-                                                      EquationData::degree_p + 2,
-                                                      LinearAlgebra::distributed::Vector<double>>> preconditioner;
-    navier_stokes_matrix.compute_diagonal();
-    preconditioner.initialize(navier_stokes_matrix);
+      /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
+      SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
+      SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
 
-    gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+      /*--- Build a Jacobi preconditioner and solve ---*/
+      PreconditionJacobi<NavierStokesProjectionOperator<dim,
+                                                        EquationData::degree_p,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 1,
+                                                        EquationData::degree_p + 2,
+                                                        LinearAlgebra::distributed::Vector<double>>> preconditioner;
+
+      navier_stokes_matrix.compute_diagonal();
+      preconditioner.initialize(navier_stokes_matrix);
+
+      gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
+
+      //Compute the relative error
+      VectorTools::integrate_difference(dof_handler_velocity, u_star, ZeroFunction<dim>(dim),
+                                        Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+      const double den = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm);
+      double error = 0.0;
+      u_tmp = u_star;
+      if(TR_BDF2_stage == 1) {
+        u_tmp -= u_n_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_k = u_star;
+      }
+      else {
+        u_tmp -= u_n_gamma_k;
+        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
+                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
+        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
+        u_n_gamma_k = u_star;
+      }
+      if(error < tolerance_fixed_point)
+        break;
+    }
   }
 
 
@@ -3182,9 +3192,6 @@ namespace NS_TRBDF2 {
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
 
-      verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
-      interpolate_velocity();
-
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
       diffusion_step();
 
@@ -3207,9 +3214,6 @@ namespace NS_TRBDF2 {
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
-
-      verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
-      interpolate_velocity();
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
       diffusion_step();
