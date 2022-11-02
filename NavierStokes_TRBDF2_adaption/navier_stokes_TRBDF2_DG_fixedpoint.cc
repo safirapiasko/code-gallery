@@ -2415,6 +2415,8 @@ namespace NS_TRBDF2 {
 
     void create_triangulation(const unsigned int n_refines);
 
+    void create_triangulation_with_square(const unsigned int n_refines);
+
     void setup_dofs();
 
     void initialize();
@@ -2591,7 +2593,7 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      create_triangulation(n_refines);
+      create_triangulation_with_square(n_refines);
       setup_dofs();
       initialize();
   }
@@ -2691,6 +2693,67 @@ namespace NS_TRBDF2 {
     }
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
 
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
+  }
+
+template<int dim>
+  void NavierStokesProjection<dim>::create_triangulation_with_square(const unsigned int n_refines) {
+    TimerOutput::Scope t(time_table, "Create triangulation");
+
+    triangulation.clear();
+
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                                tria2(MPI_COMM_WORLD),
+                                                tria3(MPI_COMM_WORLD),
+                                                tria4(MPI_COMM_WORLD);
+
+    GridGenerator::subdivided_hyper_rectangle(tria1, {60, 19},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(30.0, 9.5));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {19, 2},
+                                              Point<dim>(0.0, 9.5),
+                                              Point<dim>(9.5, 10.5));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {39, 2},
+                                              Point<dim>(10.5, 9.5),
+                                              Point<dim>(30.0, 10.5));                                          
+    GridGenerator::subdivided_hyper_rectangle(tria4, {60, 19},
+                                              Point<dim>(0.0, 10.5),
+                                              Point<dim>(30.0, 20.0));
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4},
+                                        triangulation, 1e-8, true);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 && 
+                  center[1] < 10.5 + 1e-10 && center[1] > 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
+    
+    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
     }
@@ -3158,7 +3221,7 @@ namespace NS_TRBDF2 {
     PostprocessorVorticity<dim> postprocessor;
     data_out.add_data_vector(dof_handler_velocity, u_n, postprocessor);
 
-    data_out.build_patches(MappingQ<dim>(EquationData::degree_p + 1, false),
+    data_out.build_patches(MappingQ1<dim>(),
                            EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
     const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
