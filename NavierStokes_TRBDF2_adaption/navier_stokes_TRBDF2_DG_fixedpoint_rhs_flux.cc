@@ -2467,7 +2467,7 @@ namespace NS_TRBDF2 {
   private:
     void compute_lift_and_drag();
 
-    void initialize_points_around_cylinder(const unsigned int n_points);
+    void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radiur);
 
     std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
 
@@ -2649,7 +2649,7 @@ namespace NS_TRBDF2 {
                                                 Point<dim>(0.0, 0.8),
                                                 Point<dim>(0.8, 1.21));
 
-      GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-12, true);
+      GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-8, true);
 
       GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
                                                 Point<dim>(0.0, 0.06),
@@ -2676,10 +2676,12 @@ namespace NS_TRBDF2 {
                                                 Point<dim>(3.0, 2.0));
 
       GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
-                                          triangulation, 1e-12, true);
+                                          triangulation, 1e-8, true);
+
+      GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
 
       /*--- Attach manifold (manifold ids are already copied) ---*/
-      triangulation.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+      triangulation.set_manifold(0, PolarManifold<2>(Point<2>(10.0, 10.0)));
       TransfiniteInterpolationManifold<2> inner_manifold;
       inner_manifold.initialize(triangulation);
       triangulation.set_manifold(1, inner_manifold);
@@ -2693,7 +2695,7 @@ namespace NS_TRBDF2 {
           if(std::abs(center[0] - 0.0) < 1e-10)
             face->set_boundary_id(0);
           // right side
-          else if(std::abs(center[0] - 3.0) < 1e-10)
+          else if(std::abs(center[0] - 30.0) < 1e-10)
             face->set_boundary_id(1);
           // cylinder boundary
           else if(face->manifold_id() == 0)
@@ -2701,7 +2703,7 @@ namespace NS_TRBDF2 {
           // sides of channel
           else {
             Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                  std::abs(center[1] - 2.0) < 1.0e-10,
+                  std::abs(center[1] - 20.0) < 1.0e-10,
                   ExcInternalError());
             face->set_boundary_id(3);
           }
@@ -2710,6 +2712,7 @@ namespace NS_TRBDF2 {
     }
     else {
       GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+      GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
     }
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
 
@@ -2787,7 +2790,7 @@ namespace NS_TRBDF2 {
 
     /*--- Initialize the matrix-free structure and size properly the vectors. Here again the
           second input argument of the 'initialize_dof_vector' method depends on the order of 'dof_handlers' ---*/
-    matrix_free_storage->reinit(MappingQ1<dim>(),dof_handlers, constraints, quadratures, additional_data);
+    matrix_free_storage->reinit(MappingQ1<dim>(), dof_handlers, constraints, quadratures, additional_data);
     matrix_free_storage->initialize_dof_vector(u_star, 0);
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
@@ -3312,13 +3315,13 @@ namespace NS_TRBDF2 {
   }
 
   template<int dim>
-  void NavierStokesProjection<dim>::initialize_points_around_cylinder(const unsigned int n_points){
+  void NavierStokesProjection<dim>::initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radius){
     double angle;
     cylinder_points.clear();
 
     for(unsigned int i = 0; i < n_points; ++i){
       angle = numbers::PI * i / n_points;
-      Point<dim> p(0.2 - 0.05*std::cos(angle), 0.2 + 0.05*std::sin(angle));
+      Point<dim> p(center[0] - radius*std::cos(angle), center[1] + radius*std::sin(angle));
       if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         cylinder_points.push_back(p);
@@ -3579,7 +3582,7 @@ namespace NS_TRBDF2 {
 
     /*--- Refine grid. In case the refinement level is above a certain value (or the coarsening level is below)
           we clear the flags. ---*/
-    parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(triangulation, estimated_error_per_cell, 0.1, 0.3);
+    parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(triangulation, estimated_error_per_cell, 0.01, 0.3);
     for(const auto& cell: triangulation.active_cell_iterators()) {
       if(cell->refine_flag_set() && static_cast<unsigned int>(cell->level()) == max_loc_refinements)
         cell->clear_refine_flag();
@@ -3728,6 +3731,7 @@ namespace NS_TRBDF2 {
                                                 Point<dim>(3.0, 2.0));
       GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
                                           triangulation_tmp, 1e-12, true);
+      GridTools::scale(10.0, triangulation_tmp);
       triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
       TransfiniteInterpolationManifold<2> inner_manifold;
       inner_manifold.initialize(triangulation_tmp);
@@ -3739,7 +3743,7 @@ namespace NS_TRBDF2 {
           if(std::abs(center[0] - 0.0) < 1e-10)
             face->set_boundary_id(0);
           // right side
-          else if(std::abs(center[0] - 3.0) < 1e-10)
+          else if(std::abs(center[0] - 30.0) < 1e-10)
             face->set_boundary_id(1);
           // cylinder boundary
           else if(face->manifold_id() == 0)
@@ -3747,7 +3751,7 @@ namespace NS_TRBDF2 {
           // sides of channel
           else {
             Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                  std::abs(center[1] - 2.0) < 1.0e-10,
+                  std::abs(center[1] - 20.0) < 1.0e-10,
                   ExcInternalError());
             face->set_boundary_id(3);
           }
@@ -3757,6 +3761,7 @@ namespace NS_TRBDF2 {
     }
     else{
       GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+      GridTools::scale(10.0, triangulation_tmp);
     }
 
     triangulation_tmp.refine_global(triangulation.n_global_levels() - 1);
@@ -3805,23 +3810,23 @@ namespace NS_TRBDF2 {
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
 
-    initialize_points_around_cylinder(180);
+    initialize_points_around_cylinder(180, Point<dim>(10.0, 10.0), 0.5);
 
     double height;
     double length;
     if(big_domain) {
-      height = 2.0;
-      length = 3.0;
+      height = 20.0;
+      length = 30.0;
     }
     else {
-      height = 0.41;
-      length = 2.2;
+      height = 4.1;
+      length = 22;
     }
 
-    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(0.25, 0.2), Point<dim>(length, 0.2));
-    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.26, 0.0), Point<dim>(0.26, height));
-    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(0.74, 0.0), Point<dim>(0.74, height));
-    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(1.22, 0.0), Point<dim>(1.22, height));
+    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(10.5, 0.2), Point<dim>(length, 0.2));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 1.05, 0.0), Point<dim>(10 + 1.05, height));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 1.54, 0.0), Point<dim>(10 + 1.54, height));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 2.02, 0.0), Point<dim>(10 + 2.02, height));
 
     double time = t_0 + dt;
     unsigned int n = 1;
