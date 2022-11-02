@@ -2321,14 +2321,10 @@ namespace NS_TRBDF2 {
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
                                               tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD),
-                                              tria8(MPI_COMM_WORLD),
                                               triangulation_tmp(MPI_COMM_WORLD);
 
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 0, 1.0, true);
     GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
 
     GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
@@ -2338,30 +2334,14 @@ namespace NS_TRBDF2 {
     GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1e-8, true);
 
     GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
-                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(0.0, 0.0),
                                               Point<dim>(3.0, 0.8));
 
     GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
                                               Point<dim>(0.0, 1.21),
-                                              Point<dim>(3.0, 1.94));
+                                              Point<dim>(3.0, 2.00));
 
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.02),
-                                              Point<dim>(3.0, 0.06));
-
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 1.94),
-                                              Point<dim>(3.0, 1.98));
-
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
-                                              Point<dim>(0.0, 0.0),
-                                              Point<dim>(3.0, 0.02));
-
-    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
-                                              Point<dim>(0.0, 1.98),
-                                              Point<dim>(3.0, 2.0));
-
-    GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+    GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4},
                                         triangulation, 1e-8, true);
 
     GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
@@ -3134,36 +3114,20 @@ namespace NS_TRBDF2 {
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
                                               tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD),
-                                              tria8(MPI_COMM_WORLD),
                                               triangulation_tmp2(MPI_COMM_WORLD);
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+    GridGenerator::channel_with_cylinder(tria1, 0.01, 0, 1.0, true);
     GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
     GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
                                               Point<dim>(0.0, 0.8),
                                               Point<dim>(0.8, 1.21));
     GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp2, 1.e-12, true);
     GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
-                                              Point<dim>(0.0, 0.06),
+                                              Point<dim>(0.0, 0.0),
                                               Point<dim>(3.0, 0.8));
     GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
                                               Point<dim>(0.0, 1.21),
-                                              Point<dim>(3.0, 1.94));
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.02),
-                                              Point<dim>(3.0, 0.06));
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 1.94),
-                                              Point<dim>(3.0, 1.98));
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
-                                              Point<dim>(0.0, 0.0),
-                                              Point<dim>(3.0, 0.02));
-    GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
-                                              Point<dim>(0.0, 1.98),
-                                              Point<dim>(3.0, 2.0));
-    GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                              Point<dim>(3.0, 2.00));
+    GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4},
                                         triangulation_tmp, 1e-12, true);
     GridTools::scale(10.0, triangulation_tmp);
     triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(10.0, 10.0)));
