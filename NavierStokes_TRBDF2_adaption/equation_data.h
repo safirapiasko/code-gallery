@@ -37,7 +37,7 @@ namespace EquationData {
   double Velocity<dim>::value(const Point<dim>& p, const unsigned int component) const {
     AssertIndexRange(component, dim);
     if(component == 0)
-      return 10.0;
+      return 1.0;
     else
       return 0.0;
   }
@@ -73,7 +73,7 @@ namespace EquationData {
     (void)component;
     AssertIndexRange(component, 1);
 
-    return 3.0 - p(0);
+    return 30.0 - p(0);
   }
 
   // Viscosity class definition
