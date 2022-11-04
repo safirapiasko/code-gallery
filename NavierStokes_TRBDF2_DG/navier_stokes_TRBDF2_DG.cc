@@ -2147,8 +2147,6 @@ namespace NS_TRBDF2 {
     LinearAlgebra::distributed::Vector<double> u_n;
     LinearAlgebra::distributed::Vector<double> u_n_minus_1;
     LinearAlgebra::distributed::Vector<double> u_extr;
-    LinearAlgebra::distributed::Vector<double> u_n_k;
-    LinearAlgebra::distributed::Vector<double> u_n_gamma_k;
     LinearAlgebra::distributed::Vector<double> u_n_gamma;
     LinearAlgebra::distributed::Vector<double> u_star;
     LinearAlgebra::distributed::Vector<double> u_tmp;
@@ -2217,7 +2215,6 @@ namespace NS_TRBDF2 {
     /*--- Now a bunch of variables handled by 'ParamHandler' introduced at the beginning of the code ---*/
     unsigned int max_its;
     double       eps;
-    double       tolerance_fixed_point;
     unsigned int n_refines;
 
     unsigned int max_loc_refinements;
@@ -2273,7 +2270,6 @@ namespace NS_TRBDF2 {
     navier_stokes_matrix(data),
     max_its(data.max_iterations),
     eps(data.eps),
-    tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
@@ -2324,7 +2320,7 @@ namespace NS_TRBDF2 {
                                               triangulation_tmp(MPI_COMM_WORLD);
 
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 0, 1.0, true);
+    GridGenerator::channel_with_cylinder(tria1, 0.03, 1, 1.0, true);
     GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
 
     GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
@@ -2448,8 +2444,6 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(rhs_u, 0);
     matrix_free_storage->initialize_dof_vector(u_n, 0);
     matrix_free_storage->initialize_dof_vector(u_extr, 0);
-    matrix_free_storage->initialize_dof_vector(u_n_k, 0);
-    matrix_free_storage->initialize_dof_vector(u_n_gamma_k, 0);
     matrix_free_storage->initialize_dof_vector(u_n_minus_1, 0);
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
@@ -2610,64 +2604,31 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n, pres_n});
-      u_n_k = u_n;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n});
+      navier_stokes_matrix.set_u_extr(u_extr);
+      u_star = u_extr;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_n_gamma});
-      u_n_k = u_n;
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr});
+      navier_stokes_matrix.set_u_extr(u_extr);
+      u_star = u_extr;
     }
 
-    for (unsigned int iter = 0; iter < 100; ++iter) {
-      if(TR_BDF2_stage == 1) {
-        navier_stokes_matrix.set_u_extr(u_n_k);
-        u_star = u_n_k;
-      }
-      else {
-        navier_stokes_matrix.set_u_extr(u_n_gamma_k);
-        u_star = u_n_gamma_k;
-      }
+    /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
+    SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
+    SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
 
-      /*--- Build the linear solver; in this case we specifiy the maximum number of iterations and residual ---*/
-      SolverControl solver_control(max_its, eps*rhs_u.l2_norm());
-      SolverGMRES<LinearAlgebra::distributed::Vector<double>> gmres(solver_control);
+    /*--- Build a Jacobi preconditioner and solve ---*/
+    PreconditionJacobi<NavierStokesProjectionOperator<dim,
+                                                      EquationData::degree_p,
+                                                      EquationData::degree_p + 1,
+                                                      EquationData::degree_p + 1,
+                                                      EquationData::degree_p + 2,
+                                                      LinearAlgebra::distributed::Vector<double>>> preconditioner;
+    navier_stokes_matrix.compute_diagonal();
+    preconditioner.initialize(navier_stokes_matrix);
 
-      /*--- Build a Jacobi preconditioner and solve ---*/
-      PreconditionJacobi<NavierStokesProjectionOperator<dim,
-                                                        EquationData::degree_p,
-                                                        EquationData::degree_p + 1,
-                                                        EquationData::degree_p + 1,
-                                                        EquationData::degree_p + 2,
-                                                        LinearAlgebra::distributed::Vector<double>>> preconditioner;
-
-      navier_stokes_matrix.compute_diagonal();
-      preconditioner.initialize(navier_stokes_matrix);
-
-      gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
-
-      //Compute the relative error
-      VectorTools::integrate_difference(dof_handler_velocity, u_star, ZeroFunction<dim>(dim),
-                                        Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
-      const double den = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm);
-      double error = 0.0;
-      u_tmp = u_star;
-      if(TR_BDF2_stage == 1) {
-        u_tmp -= u_n_k;
-        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
-                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
-        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
-        u_n_k = u_star;
-      }
-      else {
-        u_tmp -= u_n_gamma_k;
-        VectorTools::integrate_difference(dof_handler_velocity, u_tmp, ZeroFunction<dim>(dim),
-                                          Linfty_error_per_cell_vel, quadrature_velocity, VectorTools::Linfty_norm);
-        error = VectorTools::compute_global_error(triangulation, Linfty_error_per_cell_vel, VectorTools::Linfty_norm)/den;
-        u_n_gamma_k = u_star;
-      }
-      if(error < tolerance_fixed_point)
-        break;
-    }
+    gmres.solve(navier_stokes_matrix, u_star, rhs_u, preconditioner);
   }
 
 
@@ -2835,7 +2796,17 @@ namespace NS_TRBDF2 {
 
     data_out.build_patches(MappingQ1<dim>(), EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
-    const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
+    DataOutBase::DataOutFilterFlags flags(false, true);
+    DataOutBase::DataOutFilter      data_filter(flags);
+    data_out.write_filtered_data(data_filter);
+    std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".h5";
+    data_out.write_hdf5_parallel(data_filter, output, MPI_COMM_WORLD);
+    std::vector<XDMFEntry> xdmf_entries;
+    auto new_xdmf_entry = data_out.create_xdmf_entry(data_filter, output, step, MPI_COMM_WORLD);
+    xdmf_entries.push_back(new_xdmf_entry);
+    output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".xdmf";
+    data_out.write_xdmf_file(xdmf_entries, output, MPI_COMM_WORLD);
+    output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
 
     /*--- Serialization ---*/
@@ -2931,6 +2902,27 @@ namespace NS_TRBDF2 {
     if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) {
       output_lift << lift << std::endl;
       output_drag << drag << std::endl;
+    }
+
+    /*--- Save some velocity probes ---*/
+    const unsigned int n_points = 180;
+    std::ofstream output_probe_u;
+    std::ofstream output_probe_v;
+    for(unsigned int i = 0; i < n_points; ++i) {
+      const double angle = numbers::PI*i/n_points;
+      Point<dim> p(10.0 - 0.5004*std::cos(angle), 10.0 + 0.5004*std::sin(angle));
+      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
+         GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
+
+        output_probe_u.open("./" + saving_dir + "/u_" + std::to_string(i) + ".dat", std::ios_base::app);
+        output_probe_v.open("./" + saving_dir + "/v_" + std::to_string(i) + ".dat", std::ios_base::app);
+        Vector<double> vel;
+        VectorTools::point_value(dof_handler_velocity, u_n, p, vel);
+        output_probe_u << vel[0] << std::endl;
+        output_probe_v << vel[1] << std::endl;
+        output_probe_u.close();
+        output_probe_v.close();
+      }
     }
   }
 
@@ -3115,7 +3107,7 @@ namespace NS_TRBDF2 {
                                               tria3(MPI_COMM_WORLD),
                                               tria4(MPI_COMM_WORLD),
                                               triangulation_tmp2(MPI_COMM_WORLD);
-    GridGenerator::channel_with_cylinder(tria1, 0.01, 0, 1.0, true);
+    GridGenerator::channel_with_cylinder(tria1, 0.03, 1, 1.0, true);
     GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
     GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
                                               Point<dim>(0.0, 0.8),
@@ -3220,6 +3212,9 @@ namespace NS_TRBDF2 {
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
 
+      verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
+      interpolate_velocity();
+
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
       diffusion_step();
 
@@ -3242,6 +3237,9 @@ namespace NS_TRBDF2 {
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
+
+      verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
+      interpolate_velocity();
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
       diffusion_step();
