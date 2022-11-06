@@ -2164,6 +2164,8 @@ namespace NS_TRBDF2 {
 
     void create_triangulation(const unsigned int n_refines);
 
+    void create_triangulation_with_square(const unsigned int n_refines);
+
     void setup_dofs();
 
     void initialize();
@@ -2216,6 +2218,7 @@ namespace NS_TRBDF2 {
     unsigned int max_its;
     double       eps;
     unsigned int n_refines;
+    bool         square_cylinder;
 
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
@@ -2271,6 +2274,7 @@ namespace NS_TRBDF2 {
     max_its(data.max_iterations),
     eps(data.eps),
     n_refines(data.n_refines),
+    square_cylinder(data.square_cylinder),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -2300,7 +2304,10 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      create_triangulation(n_refines);
+      if(square_cylinder)
+        create_triangulation_with_square(n_refines);
+      else
+        create_triangulation(n_refines);
       setup_dofs();
       initialize();
   }
@@ -2365,9 +2372,72 @@ namespace NS_TRBDF2 {
         // sides of channel
         else {
           Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                std::abs(center[1] - 20.0) < 1.0e-10,
-                ExcInternalError());
+                 std::abs(center[1] - 20.0) < 1.0e-10,
+                 ExcInternalError());
           face->set_boundary_id(3);
+        }
+      }
+    }
+
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
+  }
+
+  // The method that creates the triangulation and refines it the needed number
+  // of times.
+  //
+  template<int dim>
+  void NavierStokesProjection<dim>::create_triangulation_with_square(const unsigned int n_refines) {
+    TimerOutput::Scope t(time_table, "Create triangulation");
+
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD);
+
+    GridGenerator::subdivided_hyper_rectangle(tria1, {60, 19},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(30.0, 9.5));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {19, 2},
+                                              Point<dim>(0.0, 9.5),
+                                              Point<dim>(9.5, 10.5));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {39, 2},
+                                              Point<dim>(10.5, 9.5),
+                                              Point<dim>(30.0, 10.5));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {60, 19},
+                                              Point<dim>(0.0, 10.5),
+                                              Point<dim>(30.0, 20.0));
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4},
+                                         triangulation, 1e-8, true);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10) {
+          face->set_boundary_id(0);
+        }
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10) {
+          face->set_boundary_id(1);
+        }
+        // sides of channel
+        else if(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10) {
+          face->set_boundary_id(3);
+        }
+        // cylinder boundary
+        else {
+          Assert(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 &&
+                 center[1] < 10.5 + 1e-10 && center[1] > 9.5 - 1e-10,
+                 ExcInternalError());
+          face->set_boundary_id(2);
         }
       }
     }
@@ -2796,17 +2866,7 @@ namespace NS_TRBDF2 {
 
     data_out.build_patches(MappingQ1<dim>(), EquationData::degree_p + 1, DataOut<dim>::curved_inner_cells);
 
-    DataOutBase::DataOutFilterFlags flags(false, true);
-    DataOutBase::DataOutFilter      data_filter(flags);
-    data_out.write_filtered_data(data_filter);
-    std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".h5";
-    data_out.write_hdf5_parallel(data_filter, output, MPI_COMM_WORLD);
-    std::vector<XDMFEntry> xdmf_entries;
-    auto new_xdmf_entry = data_out.create_xdmf_entry(data_filter, output, step, MPI_COMM_WORLD);
-    xdmf_entries.push_back(new_xdmf_entry);
-    output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".xdmf";
-    data_out.write_xdmf_file(xdmf_entries, output, MPI_COMM_WORLD);
-    output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
+    const std::string output = "./" + saving_dir + "/solution-" + Utilities::int_to_string(step, 5) + ".vtu";
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
 
     /*--- Serialization ---*/
@@ -2902,27 +2962,6 @@ namespace NS_TRBDF2 {
     if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0) {
       output_lift << lift << std::endl;
       output_drag << drag << std::endl;
-    }
-
-    /*--- Save some velocity probes ---*/
-    const unsigned int n_points = 180;
-    std::ofstream output_probe_u;
-    std::ofstream output_probe_v;
-    for(unsigned int i = 0; i < n_points; ++i) {
-      const double angle = numbers::PI*i/n_points;
-      Point<dim> p(10.0 - 0.5004*std::cos(angle), 10.0 + 0.5004*std::sin(angle));
-      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
-         GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
-
-        output_probe_u.open("./" + saving_dir + "/u_" + std::to_string(i) + ".dat", std::ios_base::app);
-        output_probe_v.open("./" + saving_dir + "/v_" + std::to_string(i) + ".dat", std::ios_base::app);
-        Vector<double> vel;
-        VectorTools::point_value(dof_handler_velocity, u_n, p, vel);
-        output_probe_u << vel[0] << std::endl;
-        output_probe_v << vel[1] << std::endl;
-        output_probe_u.close();
-        output_probe_v.close();
-      }
     }
   }
 

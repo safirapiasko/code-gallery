@@ -26,6 +26,9 @@ namespace RunTimeParameters {
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
     unsigned int min_loc_refinements; /*--- Number of minimum local refinements allowed
                                             once reached that level ---*/
+    bool square_cylinder;             /*--- Flag to determine whether one wants
+                                            to simulate the square cylinder or not ---*/
+
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -114,6 +117,10 @@ namespace RunTimeParameters {
                         "2",
                          Patterns::Integer(0, 10),
                          " The number of minimum local refinements. ");
+      prm.declare_entry("square_cylinder",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if we consider square or round cylinders. ");
     }
     prm.leave_subsection();
 
@@ -203,6 +210,7 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
+      square_cylinder     = prm.get_bool("square_cylinder");
     }
     prm.leave_subsection();
 
