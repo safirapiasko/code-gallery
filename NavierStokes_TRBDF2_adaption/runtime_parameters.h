@@ -27,7 +27,9 @@ namespace RunTimeParameters {
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
     unsigned int min_loc_refinements; /*--- Number of minimum local refinements allowed
                                             once reached that level ---*/
-    bool big_domain;
+    bool big_domain;                  /*--- Flag which domain one wants consider ---*/
+    bool square_cylinder;             /*--- Flag to determine whether one wants
+                                            to simulate the square cylinder or not ---*/
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -63,6 +65,7 @@ namespace RunTimeParameters {
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
                                 big_domain(false),
+                                square_cylinder(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 tolerance_fixed_point(1e-6),
@@ -127,6 +130,10 @@ namespace RunTimeParameters {
                         "false",
                         Patterns::Bool(),
                         " This flag decides if the domain is chosen small or big. ");
+      prm.declare_entry("square_cylinder",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if we consider square or round cylinders. ");
     }
     prm.leave_subsection();
 
@@ -223,6 +230,7 @@ namespace RunTimeParameters {
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
       big_domain          = prm.get_bool("big_domain");
+      square_cylinder     = prm.get_bool("square_cylinder");
     }
     prm.leave_subsection();
 
