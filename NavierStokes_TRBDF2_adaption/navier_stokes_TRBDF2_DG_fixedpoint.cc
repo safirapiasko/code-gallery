@@ -3251,8 +3251,8 @@ template<int dim>
   template<int dim>
   void NavierStokesProjection<dim>::output_statistics() {
 
-    const double p_inf = 3.0;
-    const double U_inf = 10.0;
+    const double p_inf = 30.0;
+    const double U_inf = 1.0;
 
     output_avg_pressure.close();
     output_Cf.close();
