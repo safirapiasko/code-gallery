@@ -22,6 +22,7 @@ namespace RunTimeParameters {
     double Reynolds;
     double Cs2;
     double dt;
+    bool no_slip;
 
     unsigned int n_refines;            /*--- Number of refinements ---*/
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
@@ -62,6 +63,7 @@ namespace RunTimeParameters {
                                 final_time(1.0),
                                 Reynolds(1.0),
                                 dt(5e-4),
+                                no_slip(false),
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
@@ -98,6 +100,10 @@ namespace RunTimeParameters {
                         "0.01",
                         Patterns::Double(0.0),
                         " The Smagorinsky coefficient. ");
+      prm.declare_entry("no_slip",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag determines the boundary conditions of the domain. ");
     }
     prm.leave_subsection();
 
@@ -220,6 +226,7 @@ namespace RunTimeParameters {
       final_time   = prm.get_double("final_time");
       Reynolds     = prm.get_double("Reynolds");
       Cs2          = prm.get_double("Cs2");
+      no_slip      = prm.get_bool("no_slip");
     }
     prm.leave_subsection();
 

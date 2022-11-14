@@ -264,6 +264,7 @@ namespace NS_TRBDF2 {
   protected:
     double       Re;
     double       dt;
+    bool         no_slip;
 
     /*--- Parameters of time-marching scheme ---*/
     double       gamma;
@@ -811,9 +812,9 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-          const auto& lambda                 = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda                 = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                                0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-          const auto& lambda_old             = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda_old             = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                                0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
           const auto& jump_u_old             = phi_old.get_value(q) - u_int_m;
 
@@ -852,9 +853,9 @@ namespace NS_TRBDF2 {
         phi_deltas.gather_evaluate(src[4], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                  0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
+        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -878,11 +879,11 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
-          const auto& lambda             = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda             = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                            0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
-          const auto& lambda_old         = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda_old         = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                            0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& lambda_int         = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda_int         = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                            0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
           const auto& jump_u_old         = phi_old.get_value(q) - u_m;
           const auto& jump_u_int         = phi_int.get_value(q) - u_m;
@@ -1295,7 +1296,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1 && boundary_id != 3) {
+        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1372,7 +1373,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1 && boundary_id != 3) {
+        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/

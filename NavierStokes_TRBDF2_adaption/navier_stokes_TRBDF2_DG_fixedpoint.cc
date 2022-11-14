@@ -264,6 +264,7 @@ namespace NS_TRBDF2 {
   protected:
     double       Re;
     double       dt;
+    bool         no_slip;
 
     /*--- Parameters of time-marching scheme ---*/
     double       gamma;
@@ -393,7 +394,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
-    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(false), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas() {}
 
 
@@ -402,7 +403,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator(RunTimeParameters::Data_Storage& data):
-    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip),
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(),
                                            vel_boundary_inflow(data.initial_time),
@@ -767,9 +768,9 @@ namespace NS_TRBDF2 {
         phi_deltas.gather_evaluate(src[3], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
-        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
-                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
+        
+        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -797,8 +798,8 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-          const auto& lambda                 = (boundary_id == 1 || boundary_id == 3) ?
-                                               0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+          const auto& lambda                 = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+                                               0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));                          
 
           phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
                            p_old*n_plus + a22*2.0*viscosity.value(point_vectorized, grad_u_old, dx, Re)*coef_jump*u_int_m -
@@ -834,9 +835,9 @@ namespace NS_TRBDF2 {
         phi_deltas.gather_evaluate(src[4], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
+        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                  0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
+        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -860,7 +861,7 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
-          const auto& lambda             = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda             = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                            0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
           const auto& visc_int           = viscosity.value(point_vectorized, grad_u_int, dx, Re);
@@ -1270,7 +1271,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1 && boundary_id != 3) {
+        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1347,7 +1348,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1 && boundary_id != 3) {
+        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
