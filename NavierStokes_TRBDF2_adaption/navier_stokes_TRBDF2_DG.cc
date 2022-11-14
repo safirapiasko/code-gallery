@@ -2445,13 +2445,15 @@ namespace NS_TRBDF2 {
   private:
     void compute_lift_and_drag();
 
-    void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radiur);
+    void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radius);
+
+    void initialize_points_around_square_cylinder(const unsigned int n_points, Point<dim> start, double dx);    
 
     std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
 
     void compute_pressure_avg_over_boundary(int n);
 
-    void compute_stress_avg_over_boundary(int n);
+    void compute_stress_avg_over_boundary(int n, Point<dim> center, double object_length);
 
     void compute_lipschitz_number();
 
@@ -2489,6 +2491,7 @@ namespace NS_TRBDF2 {
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
     bool         big_domain;
+    bool         square_cylinder;
 
     std::string  saving_dir;
 
@@ -2513,6 +2516,7 @@ namespace NS_TRBDF2 {
     std::ofstream output_drag;
 
     std::ofstream output_avg_pressure;
+    std::ofstream output_avg_stress;
     std::ofstream output_Cp;
     std::ofstream output_Cf;
     std::ofstream output_lipschitz;
@@ -2558,6 +2562,7 @@ namespace NS_TRBDF2 {
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
     big_domain(data.big_domain),
+    square_cylinder(data.square_cylinder),
     saving_dir(data.dir),
     restart(data.restart),
     save_for_restart(data.save_for_restart),
@@ -2574,14 +2579,7 @@ namespace NS_TRBDF2 {
     output_n_dofs_pressure("./" + data.dir + "/n_dofs_pressure.dat", std::ofstream::out),
     output_lift("./" + data.dir + "/lift.dat", std::ofstream::out),
     output_drag("./" + data.dir + "/drag.dat", std::ofstream::out),
-    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out),
-    output_avg_pressure("./" + data.dir + "/avg_p.dat", std::ofstream::out),
-    output_Cp("./" + data.dir + "/Cp.dat", std::ofstream::out),
-    output_Cf("./" + data.dir + "/Cf.dat", std::ofstream::out),
-    out_vel_hor("./" + data.dir + "/out_vel_hor.dat", std::ofstream::out),
-    out_vel_ver1("./" + data.dir + "/out_vel_ver1.dat", std::ofstream::out),
-    out_vel_ver2("./" + data.dir + "/out_vel_ver2.dat", std::ofstream::out),
-    out_vel_ver3("./" + data.dir + "/out_vel_ver3.dat", std::ofstream::out)    {
+    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out)  {
 
       if(EquationData::degree_p < 1) {
         pcout
@@ -2593,8 +2591,10 @@ namespace NS_TRBDF2 {
       AssertThrow(!((dt <= 0.0) || (dt > 0.5*T)), ExcInvalidTimeStep(dt, 0.5*T));
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
-
-      create_triangulation_with_square(n_refines);
+      if(square_cylinder)
+        create_triangulation_with_square(n_refines);
+      else
+        create_triangulation(n_refines);
       setup_dofs();
       initialize();
   }
@@ -3240,6 +3240,7 @@ template<int dim>
     const double U_inf = 1.0;
 
     output_avg_pressure.close();
+    output_avg_stress.close();
     output_Cf.close();
     out_vel_hor.close();
     out_vel_ver1.close();
@@ -3252,6 +3253,7 @@ template<int dim>
       if(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == rank) {
         if(rank == 0){
           output_avg_pressure.open("./" + saving_dir + "/avg_p.dat", std::ofstream::out | std::ofstream::trunc);
+          output_avg_stress.open("./" + saving_dir + "/avg_stress.dat", std::ofstream::out | std::ofstream::trunc);
           output_Cf.open("./" + saving_dir + "/Cf.dat", std::ofstream::out | std::ofstream::trunc);
           output_Cp.open("./" + saving_dir + "/Cp.dat", std::ofstream::out | std::ofstream::trunc);
           out_vel_hor.open("./" + saving_dir + "/out_vel_hor.dat", std::ofstream::out | std::ofstream::trunc);
@@ -3261,6 +3263,7 @@ template<int dim>
         }
         else{
           output_avg_pressure.open("./" + saving_dir + "/avg_p.dat", std::ios_base::app);
+          output_avg_stress.open("./" + saving_dir + "/avg_stress.dat", std::ios_base::app);
           output_Cf.open("./" + saving_dir + "/Cf.dat", std::ios_base::app);
           output_Cp.open("./" + saving_dir + "/Cp.dat", std::ios_base::app);
           out_vel_hor.open("./" + saving_dir + "/out_vel_hor.dat", std::ios_base::app);
@@ -3277,37 +3280,40 @@ template<int dim>
                           (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
 
           /*--- Output pressure average ---*/
-          output_avg_pressure << degree << "," << avg_pressure[i] << std::endl;
+          output_avg_pressure << degree << " " << avg_pressure[i] << std::endl;
 
           /*--- Output Cf average ---*/
-          output_Cf << degree << "," << avg_stress[i] * 2. / (Re * U_inf * U_inf) << std::endl;
+          output_Cf << degree << " " << avg_stress[i] * 2. / (Re * U_inf * U_inf) << std::endl;
+
+          /*--- Output stress average ---*/
+          output_avg_stress << degree << " " << avg_stress[i] << std::endl;
         }
 
         /*--- Output average velocity horizontal wake points ---*/
         for(unsigned int i = 0; i < horizontal_wake_points.size(); i++) {
-          out_vel_hor  << horizontal_wake_points[i][0] - 0.2 << ","
-                       << avg_horizontal_velocity[i][0] << ","
+          out_vel_hor  << horizontal_wake_points[i][0] << " "
+                       << avg_horizontal_velocity[i][0] << " "
                        << avg_horizontal_velocity[i][1] << std::endl;
         }
 
         /*--- Output average velocity vertical points 1 ---*/
         for(unsigned int i = 0; i < vertical_profile_points1.size(); i++) {
-          out_vel_ver1 << vertical_profile_points1[i][1] << ","
-                       << avg_vertical_velocity1[i][0] << ","
+          out_vel_ver1 << vertical_profile_points1[i][1] << " "
+                       << avg_vertical_velocity1[i][0] << " "
                        << avg_vertical_velocity1[i][1] << std::endl;
         }
 
         /*--- Output average velocity vertical points 2 ---*/
         for(unsigned int i = 0; i < vertical_profile_points2.size(); i++) {
-          out_vel_ver2 << vertical_profile_points2[i][1] << ","
-                       << avg_vertical_velocity2[i][0] << ","
+          out_vel_ver2 << vertical_profile_points2[i][1] << " "
+                       << avg_vertical_velocity2[i][0] << " "
                        << avg_vertical_velocity2[i][1] << std::endl;
         }
 
         /*--- Output average velocity vertical points 3 ---*/
         for(unsigned int i = 0; i < vertical_profile_points3.size(); i++) {
-          out_vel_ver3 << vertical_profile_points3[i][1] << ","
-                       << avg_vertical_velocity3[i][0] << ","
+          out_vel_ver3 << vertical_profile_points3[i][1] << " "
+                       << avg_vertical_velocity3[i][0] << " "
                        << avg_vertical_velocity3[i][1] << std::endl;
         }
 
@@ -3318,10 +3324,11 @@ template<int dim>
                           std::atan2((cylinder_points[i][1]  - 0.2), (cylinder_points[i][0] - 0.2)) * 180.0 / numbers::PI :
                           (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
 
-          output_Cp << degree << "," << 2*(avg_pressure[i] - p_inf) / (U_inf*U_inf) << std::endl;
+          output_Cp << degree << " " << 2*(avg_pressure[i] - p_inf) / (U_inf*U_inf) << std::endl;
         }
 
         output_avg_pressure.close();
+        output_avg_stress.close();
         output_Cf.close();
         out_vel_hor.close();
         out_vel_ver1.close();
@@ -3349,6 +3356,32 @@ template<int dim>
          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         cylinder_points.push_back(p);
       }
+    }
+  }
+
+    template<int dim>
+  void NavierStokesProjection<dim>::initialize_points_around_square_cylinder(const unsigned int n_points, Point<dim> start, double dx){
+
+    cylinder_points.clear();
+
+    double space = 2.0 * dx / (n_points - 1);
+    Point<dim> p;
+
+    for(unsigned int i = 0; i < n_points; ++i){
+      if(i*space < 0.5 * dx){
+        p = Point<dim>(start[0], start[1] + i * space);
+      }
+      else if(i*space < 1.5 * dx){
+        p = Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx);
+      }
+      else{
+        p = Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space);
+      }
+      if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
+         GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
+        cylinder_points.push_back(p);
+      }
+
     }
   }
 
@@ -3389,17 +3422,33 @@ template<int dim>
 
   // stress average over time over boundary
   template<int dim>
-  void NavierStokesProjection<dim>::compute_stress_avg_over_boundary(int n) {
-    double x0 = 0.2;
-    double y0 = 0.2;
+  void NavierStokesProjection<dim>::compute_stress_avg_over_boundary(int n, Point<dim> center, double object_length) {
+
+    Tensor<1, dim, double> normal_vector;
 
     for(int i = 0; i < cylinder_points.size(); i++) {
       if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned()) {
         std::vector<Tensor< 1, dim, double >> vel_grad;
         VectorTools::point_gradient(dof_handler_velocity, u_n, cylinder_points[i], vel_grad);
+        
+        if(square_cylinder){
+          if(cylinder_points[i][0] == center[0] - 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({-1, 0});
+          else if(cylinder_points[i][1] == center[1] - 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0, -1});
+          else if(cylinder_points[i][0] == center[0] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({1, 0});
+          else if(cylinder_points[i][1] == center[1] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0, 1});
+          else
+            std::cout << "Error in compute stress average over boundary" << std::endl;
+        }
+        else{
+          normal_vector = Tensor< 1, dim, double >({2.*(cylinder_points[i][0] - center[0]), 2.*(cylinder_points[i][1] - center[1])});
+        }
 
-        Tensor< 1, dim, double > normal_vector = Tensor< 1, dim, double >({2.*(cylinder_points[i][0] - x0), 2.*(cylinder_points[i][1] - y0)});
+        Tensor< 1, dim, double > normal_vector = Tensor< 1, dim, double >({2.*(cylinder_points[i][0] - center[0]), 2.*(cylinder_points[i][1] - center[1])});
         normal_vector /= normal_vector.norm();
 
         Tensor< 1, dim, double > tangential_vector = Tensor< 1, dim, double >({normal_vector[1], - normal_vector[0]});
@@ -3426,8 +3475,9 @@ template<int dim>
   void NavierStokesProjection<dim>::compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity) {
     for(int i = 0; i < points.size(); i++) {
       if(GridTools::find_active_cell_around_point(triangulation, points[i]) != triangulation.end() &&
-         GridTools::find_active_cell_around_point(triangulation, points[i])->is_locally_owned())  {
-        Vector<double> vel;
+         GridTools::find_active_cell_around_point(triangulation, points[i])->is_locally_owned()) {
+
+        Vector<double> vel(dim);
         VectorTools::point_value(dof_handler_velocity, u_n, points[i], vel);
         if(n > 1) {
           for(unsigned int d = 0; d < dim; ++d) {
@@ -3818,6 +3868,46 @@ template<int dim>
     data_out.write_vtu_in_parallel(output, MPI_COMM_WORLD);
   }
 
+  template<int dim>
+  void read_statistics_velocity(std::vector<Point<dim>>& points, int axis, std::vector<Vector<double>>& values, std::string filename) {
+    std::ifstream infile;
+    double idx;
+    Vector<double> val(dim);
+
+    values.resize(points.size());
+
+    infile.open(filename);
+    while (infile >> idx){
+      infile >> val[0] >> val[1];
+      int it = std::find_if(points.begin(), points.end(), 
+        [&](Point<dim> p){ return std::abs(p[axis] - idx) < 1.0e-10; }) - points.begin();
+
+      if(it != points.size()){
+        values[it] = val;
+      }
+    }
+    infile.close();
+  }
+
+  void read_statistics(std::vector<double> & points, std::vector<double> & values, std::string filename) {
+    std::ifstream infile;
+    double idx;
+    double val;
+
+    values.resize(points.size());
+
+    infile.open(filename);
+    while (infile >> idx){
+      infile >> val;
+      int it = std::find_if(points.begin(), points.end(), 
+        [&](double p){ return std::abs(p - idx) < 1.0e-10; }) - points.begin();
+
+      if(it != points.size()){
+        values[it] = val;
+      }
+    }
+    infile.close();
+  }
 
   // @sect{ <code>NavierStokesProjection::run</code> }
 
@@ -3832,40 +3922,64 @@ template<int dim>
   template<int dim>
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
+    Point<dim> center;
+    double radius, length, height;
 
-    initialize_points_around_cylinder(180, Point<dim>(10.0, 10.0), 0.5);
-
-    double height;
-    double length;
-    if(big_domain) {
+    if(big_domain || square_cylinder){
+      center =  Point<dim>(10.0, 10.0);
+      radius = 0.5;
       height = 20.0;
-      length = 30.0;
+      length = 30.0;    }
+    else {
+      center = Point<dim>(0.2, 0.2);
+      radius = 0.05;
+      height = 0.41;
+      length = 2.2;
+   }
+
+    if(square_cylinder) {
+      initialize_points_around_square_cylinder(200, Point<dim>(center[0] - radius, center[1]), 2.0 * radius);
     }
     else {
-      height = 4.1;
-      length = 22;
+      initialize_points_around_cylinder(180, center, radius);
     }
 
-    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(10.5, 0.2), Point<dim>(length, 0.2));
-    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 1.05, 0.0), Point<dim>(10 + 1.05, height));
-    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 1.54, 0.0), Point<dim>(10 + 1.54, height));
-    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(10 + 2.02, 0.0), Point<dim>(10 + 2.02, height));
+    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
 
     double time = t_0 + dt;
     unsigned int n = 1;
     if(restart && !as_initial_conditions) {
       n    = step_restart;
       time = time_restart;
+
+      read_statistics_velocity(horizontal_wake_points, 0, avg_horizontal_velocity, "./" + saving_dir + "/out_vel_hor.dat");
+      read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
+      read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
+      read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
+      
+      std::vector<double> degree_points;
+      for(auto& point : cylinder_points) {
+        degree_points.push_back(std::atan2((point[1] - center[1]), (point[0] - center[0])) >= 0.0 ?
+                std::atan2((point[1] - center[1]), (point[0] - center[0])) * 180.0 / numbers::PI :
+                (std::atan2((point[1] - center[1]), (point[0] - center[0])) + 2.0*numbers::PI) * 180.0 / numbers::PI);
+      }
+      
+      read_statistics(degree_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
+      read_statistics(degree_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
       output_results(1);
 
       compute_pressure_avg_over_boundary(n);
+      compute_stress_avg_over_boundary(n, center, 2.0 * radius);
+
       compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
       compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
       compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
       compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
-      compute_stress_avg_over_boundary(n);
     }
     while(std::abs(T - time) > 1e-10) {
       time += dt;
@@ -3931,11 +4045,11 @@ template<int dim>
 
       // compute time average of parameters along different points
       compute_pressure_avg_over_boundary(n);
+      compute_stress_avg_over_boundary(n, center, 2.0 * radius);
       compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
       compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
       compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
       compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
-      compute_stress_avg_over_boundary(n);
 
       // compute lipschitz number at every timestep
       compute_lipschitz_number();
@@ -3975,7 +4089,7 @@ template<int dim>
     if(n % output_interval != 0) {
       verbose_cout << "Plotting Solution final" << std::endl;
       output_results(n);
-      output_statistics();
+      // output_statistics();
     }
     if(refinement_iterations > 0) {
       for(unsigned int lev = 0; lev < triangulation.n_global_levels() - 1; ++ lev)
