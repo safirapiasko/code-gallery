@@ -2416,6 +2416,8 @@ namespace NS_TRBDF2 {
 
     void create_triangulation_with_square(const unsigned int n_refines);
 
+    void create_triangulation_empty(const unsigned int n_refines);
+
     void setup_dofs();
 
     void initialize();
@@ -2434,7 +2436,7 @@ namespace NS_TRBDF2 {
 
     void output_results(const unsigned int step);
 
-    void output_statistics();
+    void output_statistics(Point<dim> center);
 
     void refine_mesh();
 
@@ -2492,6 +2494,7 @@ namespace NS_TRBDF2 {
     unsigned int refinement_iterations;
     bool         big_domain;
     bool         square_cylinder;
+    bool         empty;
 
     std::string  saving_dir;
 
@@ -2563,6 +2566,7 @@ namespace NS_TRBDF2 {
     refinement_iterations(data.refinement_iterations),
     big_domain(data.big_domain),
     square_cylinder(data.square_cylinder),
+    empty(data.empty),
     saving_dir(data.dir),
     restart(data.restart),
     save_for_restart(data.save_for_restart),
@@ -2591,7 +2595,9 @@ namespace NS_TRBDF2 {
       AssertThrow(!((dt <= 0.0) || (dt > 0.5*T)), ExcInvalidTimeStep(dt, 0.5*T));
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
-      if(square_cylinder)
+      if(empty)
+        create_triangulation_empty(n_refines);
+      else if(square_cylinder)
         create_triangulation_with_square(n_refines);
       else
         create_triangulation(n_refines);
@@ -2693,7 +2699,6 @@ namespace NS_TRBDF2 {
       GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
     }
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
     }
@@ -2703,7 +2708,7 @@ namespace NS_TRBDF2 {
     }
   }
 
-template<int dim>
+  template<int dim>
   void NavierStokesProjection<dim>::create_triangulation_with_square(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
 
@@ -2754,6 +2759,47 @@ template<int dim>
       }
     }
     
+    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
+  }
+
+  template<int dim>
+  void NavierStokesProjection<dim>::create_triangulation_empty(const unsigned int n_refines) {
+    TimerOutput::Scope t(time_table, "Create triangulation");
+
+    triangulation.clear();
+
+    GridGenerator::subdivided_hyper_rectangle(triangulation, {30, 20},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(30.0, 20.0));
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -3234,7 +3280,7 @@ template<int dim>
   }
 
   template<int dim>
-  void NavierStokesProjection<dim>::output_statistics() {
+  void NavierStokesProjection<dim>::output_statistics(Point<dim> center) {
 
     const double p_inf = 30.0;
     const double U_inf = 1.0;
@@ -3272,21 +3318,26 @@ template<int dim>
           out_vel_ver3.open("./" + saving_dir + "/out_vel_ver3.dat", std::ios_base::app);
         }
 
-        /*--- Output average along cylinder boundary ---*/
-        for(unsigned int i = 0; i < cylinder_points.size(); i++) {
+        if(!empty) {
+          /*--- Output average along cylinder boundary ---*/
+          for(unsigned int i = 0; i < cylinder_points.size(); i++) {
 
-          double degree = std::atan2((cylinder_points[i][1] - 0.2),  (cylinder_points[i][0] - 0.2)) >= 0.0 ?
-                          std::atan2((cylinder_points[i][1] - 0.2),  (cylinder_points[i][0] - 0.2)) * 180.0 / numbers::PI :
-                          (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
+            double degree = std::atan2((cylinder_points[i][1] - center[1]),  (cylinder_points[i][0] - center[0])) >= 0.0 ?
+                            std::atan2((cylinder_points[i][1] - center[1]),  (cylinder_points[i][0] - center[0])) * 180.0 / numbers::PI :
+                            (std::atan2((cylinder_points[i][1] - center[1]), (cylinder_points[i][0] - center[0])) + 2.0*numbers::PI) * 180.0 / numbers::PI;
 
-          /*--- Output pressure average ---*/
-          output_avg_pressure << degree << " " << avg_pressure[i] << std::endl;
+            /*--- Output pressure average ---*/
+            output_avg_pressure << degree << " " << avg_pressure[i] << std::endl;
 
-          /*--- Output Cf average ---*/
-          output_Cf << degree << " " << avg_stress[i] * 2. / (Re * U_inf * U_inf) << std::endl;
+            /*--- Output Cf average ---*/
+            output_Cf << degree << " " << avg_stress[i] * 2. / (Re * U_inf * U_inf) << std::endl;
 
-          /*--- Output stress average ---*/
-          output_avg_stress << degree << " " << avg_stress[i] << std::endl;
+            /*--- Output stress average ---*/
+            output_avg_stress << degree << " " << avg_stress[i] << std::endl;
+
+            /*--- Output Cp average ---*/
+            output_Cp << degree << " " << 2*(avg_pressure[i] - p_inf) / (U_inf*U_inf) << std::endl;
+          }
         }
 
         /*--- Output average velocity horizontal wake points ---*/
@@ -3317,16 +3368,6 @@ template<int dim>
                        << avg_vertical_velocity3[i][1] << std::endl;
         }
 
-        /*--- Output pressure coefficient ---*/
-        for(unsigned int i = 0; i < cylinder_points.size(); i++) {
-          // output_avg_pressure << cylinder_points[i][0] << ", " << cylinder_points[i][1] << std::endl;
-          double degree = std::atan2((cylinder_points[i][1]  - 0.2), (cylinder_points[i][0] - 0.2)) >= 0.0 ?
-                          std::atan2((cylinder_points[i][1]  - 0.2), (cylinder_points[i][0] - 0.2)) * 180.0 / numbers::PI :
-                          (std::atan2((cylinder_points[i][1] - 0.2), (cylinder_points[i][0] - 0.2)) + 2.0*numbers::PI) * 180.0 / numbers::PI;
-
-          output_Cp << degree << " " << 2*(avg_pressure[i] - p_inf) / (U_inf*U_inf) << std::endl;
-        }
-
         output_avg_pressure.close();
         output_avg_stress.close();
         output_Cf.close();
@@ -3335,11 +3376,9 @@ template<int dim>
         out_vel_ver2.close();
         out_vel_ver3.close();
         output_Cp.close();
-
       }
 
       MPI_Barrier(MPI_COMM_WORLD);
-
     }
 
   }
@@ -3936,12 +3975,13 @@ template<int dim>
       height = 0.41;
       length = 2.2;
    }
-
-    if(square_cylinder) {
-      initialize_points_around_square_cylinder(200, Point<dim>(center[0] - radius, center[1]), 2.0 * radius);
-    }
-    else {
-      initialize_points_around_cylinder(180, center, radius);
+    if(!empty){
+      if(square_cylinder) {
+        initialize_points_around_square_cylinder(200, Point<dim>(center[0] - radius, center[1]), 2.0 * radius);
+      }
+      else {
+        initialize_points_around_cylinder(180, center, radius);
+      }
     }
 
     horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
@@ -3960,21 +4000,26 @@ template<int dim>
       read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
       read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
       
-      std::vector<double> degree_points;
-      for(auto& point : cylinder_points) {
-        degree_points.push_back(std::atan2((point[1] - center[1]), (point[0] - center[0])) >= 0.0 ?
-                std::atan2((point[1] - center[1]), (point[0] - center[0])) * 180.0 / numbers::PI :
-                (std::atan2((point[1] - center[1]), (point[0] - center[0])) + 2.0*numbers::PI) * 180.0 / numbers::PI);
+      if(!empty){
+        std::vector<double> degree_points;
+        for(auto& point : cylinder_points) {
+          degree_points.push_back(std::atan2((point[1] - center[1]), (point[0] - center[0])) >= 0.0 ?
+                  std::atan2((point[1] - center[1]), (point[0] - center[0])) * 180.0 / numbers::PI :
+                  (std::atan2((point[1] - center[1]), (point[0] - center[0])) + 2.0*numbers::PI) * 180.0 / numbers::PI);
+        }
+        
+        read_statistics(degree_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
+        read_statistics(degree_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
       }
-      
-      read_statistics(degree_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
-      read_statistics(degree_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
+
     }
     else {
       output_results(1);
 
-      compute_pressure_avg_over_boundary(n);
-      compute_stress_avg_over_boundary(n, center, 2.0 * radius);
+      if(!empty){
+        compute_pressure_avg_over_boundary(n);
+        compute_stress_avg_over_boundary(n, center, 2.0 * radius);
+      }
 
       compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
       compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
@@ -4044,8 +4089,11 @@ template<int dim>
       compute_lift_and_drag();
 
       // compute time average of parameters along different points
-      compute_pressure_avg_over_boundary(n);
-      compute_stress_avg_over_boundary(n, center, 2.0 * radius);
+      if(!empty){
+        compute_pressure_avg_over_boundary(n);
+        compute_stress_avg_over_boundary(n, center, 2.0 * radius);
+      }
+
       compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
       compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
       compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
@@ -4057,7 +4105,7 @@ template<int dim>
       if(n % output_interval == 0) {
         verbose_cout << "Plotting Solution final" << std::endl;
         output_results(n);
-        output_statistics();
+        output_statistics(center);
       }
       /*--- In case dt is not a multiple of T, we reduce dt in order to end up at T ---*/
       if(T - time < dt && T - time > 1e-10) {
@@ -4089,7 +4137,6 @@ template<int dim>
     if(n % output_interval != 0) {
       verbose_cout << "Plotting Solution final" << std::endl;
       output_results(n);
-      // output_statistics();
     }
     if(refinement_iterations > 0) {
       for(unsigned int lev = 0; lev < triangulation.n_global_levels() - 1; ++ lev)

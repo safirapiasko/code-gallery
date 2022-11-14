@@ -30,6 +30,7 @@ namespace RunTimeParameters {
     bool big_domain;                  /*--- Flag which domain one wants consider ---*/
     bool square_cylinder;             /*--- Flag to determine whether one wants
                                             to simulate the square cylinder or not ---*/
+    bool empty;                       /*--- Flag to define an empty channel ---*/
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -66,6 +67,7 @@ namespace RunTimeParameters {
                                 min_loc_refinements(0),
                                 big_domain(false),
                                 square_cylinder(false),
+                                empty(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 tolerance_fixed_point(1e-6),
@@ -134,6 +136,10 @@ namespace RunTimeParameters {
                         "false",
                         Patterns::Bool(),
                         " This flag decides if we consider square or round cylinders. ");
+      prm.declare_entry("empty",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if we consider an empty channel. ");
     }
     prm.leave_subsection();
 
@@ -231,6 +237,7 @@ namespace RunTimeParameters {
       min_loc_refinements = prm.get_integer("min_loc_refinements");
       big_domain          = prm.get_bool("big_domain");
       square_cylinder     = prm.get_bool("square_cylinder");
+      empty               = prm.get_bool("empty");
     }
     prm.leave_subsection();
 
