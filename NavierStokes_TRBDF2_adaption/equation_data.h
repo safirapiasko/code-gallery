@@ -86,7 +86,7 @@ namespace EquationData {
     Viscosity(const double initial_time = 0.0, const double Cs2_ = 0.0);
 
     VectorizedArray<Number> value(const Point<dim, VectorizedArray<Number>>& p,
-                                  const SymmetricTensor<dim, dim, VectorizedArray<Number>>& sym_grad_u,
+                                  const SymmetricTensor<2, dim, VectorizedArray<Number>>& sym_grad_u,
                                   const VectorizedArray<Number>& dx, const double& Re) const;
 
   };
@@ -98,7 +98,7 @@ namespace EquationData {
 
   template<int dim, typename Number>
   VectorizedArray<Number> Viscosity<dim, Number>::value(const Point<dim, VectorizedArray<Number>>& p,
-                                                        const SymmetricTensor<dim, dim, VectorizedArray<Number>>& sym_grad_u,
+                                                        const SymmetricTensor<2, dim, VectorizedArray<Number>>& sym_grad_u,
                                                         const VectorizedArray<Number>& dx, const double& Re) const {
 
     /*--- Subgrid viscosity ---*/
