@@ -2460,7 +2460,7 @@ namespace NS_TRBDF2 {
 
     std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
 
-    void compute_pressure_avg_over_boundary(int n);
+    void compute_pressure_avg_over_boundary(int n, double height = 0.0, int n_points = 1);
 
     void compute_stress_avg_over_boundary(int n, Point<dim> center, double object_length);
 
@@ -2602,12 +2602,23 @@ namespace NS_TRBDF2 {
       AssertThrow(!((dt <= 0.0) || (dt > 0.5*T)), ExcInvalidTimeStep(dt, 0.5*T));
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
-      if(empty)
-        create_triangulation_empty_2D(n_refines);
-      else if(square_cylinder)
-        create_triangulation_with_square_2D(n_refines);
-      else
-        create_triangulation_2D(n_refines);
+      if(dim == 2){
+        if(empty)
+          create_triangulation_empty_2D(n_refines);
+        else if(square_cylinder)
+          create_triangulation_with_square_2D(n_refines);
+        else
+          create_triangulation_2D(n_refines);
+      }
+      else if(dim == 3){
+        if(empty)
+          create_triangulation_empty_3D(n_refines);
+        else if(square_cylinder)
+          create_triangulation_with_square_3D(n_refines);
+        else
+          create_triangulation_3D(n_refines);
+      }
+
       setup_dofs();
       initialize();
   }
@@ -2619,100 +2630,103 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::create_triangulation_2D(const unsigned int n_refines) {
     TimerOutput::Scope t(time_table, "Create triangulation");
-    if(big_domain) {
-      triangulation.clear();
+    if(dim == 2){
+        if(big_domain) {
+        triangulation.clear();
 
-      parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
-                                                tria2(MPI_COMM_WORLD),
-                                                tria3(MPI_COMM_WORLD),
-                                                tria4(MPI_COMM_WORLD),
-                                                tria5(MPI_COMM_WORLD),
-                                                tria6(MPI_COMM_WORLD),
-                                                tria7(MPI_COMM_WORLD),
-                                                tria8(MPI_COMM_WORLD),
-                                                triangulation_tmp(MPI_COMM_WORLD);
+        parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                                  tria2(MPI_COMM_WORLD),
+                                                  tria3(MPI_COMM_WORLD),
+                                                  tria4(MPI_COMM_WORLD),
+                                                  tria5(MPI_COMM_WORLD),
+                                                  tria6(MPI_COMM_WORLD),
+                                                  tria7(MPI_COMM_WORLD),
+                                                  tria8(MPI_COMM_WORLD),
+                                                  triangulation_tmp(MPI_COMM_WORLD);
 
-      /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-      GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
-      GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
+        /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+        GridGenerator::channel_with_cylinder(tria1, 0.01, 4, 2.0, true);
+        GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
 
-      GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
-                                                Point<dim>(0.0, 0.8),
-                                                Point<dim>(0.8, 1.21));
+        GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4},
+                                                  Point<dim>(0.0, 0.8),
+                                                  Point<dim>(0.8, 1.21));
 
-      GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-8, true);
+        GridGenerator::merge_triangulations(tria1, tria2, triangulation_tmp, 1.e-8, true);
 
-      GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
-                                                Point<dim>(0.0, 0.06),
-                                                Point<dim>(3.0, 0.8));
+        GridGenerator::subdivided_hyper_rectangle(tria3, {30, 8},
+                                                  Point<dim>(0.0, 0.06),
+                                                  Point<dim>(3.0, 0.8));
 
-      GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
-                                                Point<dim>(0.0, 1.21),
-                                                Point<dim>(3.0, 1.94));
+        GridGenerator::subdivided_hyper_rectangle(tria4, {30, 8},
+                                                  Point<dim>(0.0, 1.21),
+                                                  Point<dim>(3.0, 1.94));
 
-      GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                                Point<dim>(0.0, 0.02),
-                                                Point<dim>(3.0, 0.06));
+        GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                                  Point<dim>(0.0, 0.02),
+                                                  Point<dim>(3.0, 0.06));
 
-      GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                                Point<dim>(0.0, 1.94),
-                                                Point<dim>(3.0, 1.98));
+        GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                                  Point<dim>(0.0, 1.94),
+                                                  Point<dim>(3.0, 1.98));
 
-      GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
-                                                Point<dim>(0.0, 0.0),
-                                                Point<dim>(3.0, 0.02));
+        GridGenerator::subdivided_hyper_rectangle(tria7, {30, 2},
+                                                  Point<dim>(0.0, 0.0),
+                                                  Point<dim>(3.0, 0.02));
 
-      GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
-                                                Point<dim>(0.0, 1.98),
-                                                Point<dim>(3.0, 2.0));
+        GridGenerator::subdivided_hyper_rectangle(tria8, {30, 2},
+                                                  Point<dim>(0.0, 1.98),
+                                                  Point<dim>(3.0, 2.0));
 
-      GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
-                                          triangulation, 1e-8, true);
+        GridGenerator::merge_triangulations({&triangulation_tmp, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
+                                            triangulation, 1e-8, true);
 
-      GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
+        GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
 
-      /*--- Attach manifold (manifold ids are already copied) ---*/
-      triangulation.set_manifold(0, PolarManifold<2>(Point<2>(10.0, 10.0)));
-      TransfiniteInterpolationManifold<2> inner_manifold;
-      inner_manifold.initialize(triangulation);
-      triangulation.set_manifold(1, inner_manifold);
+        /*--- Attach manifold (manifold ids are already copied) ---*/
+        triangulation.set_manifold(0, PolarManifold<dim>(Point<dim>(10.0, 10.0)));
+        TransfiniteInterpolationManifold<dim> inner_manifold;
+        inner_manifold.initialize(triangulation);
+        triangulation.set_manifold(1, inner_manifold);
 
-      /*--- Set boundary id ---*/
-      for(const auto& face : triangulation.active_face_iterators()) {
-        if(face->at_boundary()) {
-          const Point<dim> center = face->center();
+        /*--- Set boundary id ---*/
+        for(const auto& face : triangulation.active_face_iterators()) {
+          if(face->at_boundary()) {
+            const Point<dim> center = face->center();
 
-          // left side
-          if(std::abs(center[0] - 0.0) < 1e-10)
-            face->set_boundary_id(0);
-          // right side
-          else if(std::abs(center[0] - 30.0) < 1e-10)
-            face->set_boundary_id(1);
-          // cylinder boundary
-          else if(face->manifold_id() == 0)
-            face->set_boundary_id(2);
-          // sides of channel
-          else {
-            Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                  std::abs(center[1] - 20.0) < 1.0e-10,
-                  ExcInternalError());
-            face->set_boundary_id(3);
+            // left side
+            if(std::abs(center[0] - 0.0) < 1e-10)
+              face->set_boundary_id(0);
+            // right side
+            else if(std::abs(center[0] - 30.0) < 1e-10)
+              face->set_boundary_id(1);
+            // cylinder boundary
+            else if(face->manifold_id() == 0)
+              face->set_boundary_id(2);
+            // sides of channel
+            else {
+              Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                    std::abs(center[1] - 20.0) < 1.0e-10,
+                    ExcInternalError());
+              face->set_boundary_id(3);
+            }
           }
         }
       }
+      else {
+        GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
+        GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
+      }
+      /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+      if(restart) {
+        triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+      }
+      else {
+        pcout << "Number of refines = " << n_refines << std::endl;
+        triangulation.refine_global(n_refines);
+      }
     }
-    else {
-      GridGenerator::channel_with_cylinder(triangulation, 0.015, 4, 2.0, true);
-      GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
-    }
-    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
-    if(restart) {
-      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
-    }
-    else {
-      pcout << "Number of refines = " << n_refines << std::endl;
-      triangulation.refine_global(n_refines);
-    }
+
   }
 
   template<int dim>
@@ -2771,7 +2785,7 @@ namespace NS_TRBDF2 {
       GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
 
       /*--- Attach manifold (manifold ids are already copied) ---*/
-      triangulation.set_manifold(0, CylindricalManifold<dim>(Tensor<1, dim>{0.0, 0.0, 1.0}, Point<dim>(10.0, 10.0, 0.0)));
+      triangulation.set_manifold(0, CylindricalManifold<dim>(Tensor<1, dim>({0.0, 0.0, 1.0}), Point<dim>(10.0, 10.0, 0.0)));
       TransfiniteInterpolationManifold<dim> inner_manifold;
       inner_manifold.initialize(triangulation);
       triangulation.set_manifold(1, inner_manifold);
@@ -3612,7 +3626,12 @@ namespace NS_TRBDF2 {
 
     for(unsigned int i = 0; i < n_points; ++i){
       angle = numbers::PI * i / n_points;
-      Point<dim> p(center[0] - radius*std::cos(angle), center[1] + radius*std::sin(angle));
+      Point<dim> p;
+      if(dim == 2)
+        p = Point<dim>(center[0] - radius*std::cos(angle), center[1] + radius*std::sin(angle));
+      else if (dim == 3)
+        p = Point<dim>(center[0] - radius*std::cos(angle), center[1] + radius*std::sin(angle), center[2]);
+
       if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         cylinder_points.push_back(p);
@@ -3630,19 +3649,18 @@ namespace NS_TRBDF2 {
 
     for(unsigned int i = 0; i < n_points; ++i){
       if(i*space < 0.5 * dx){
-        p = Point<dim>(start[0], start[1] + i * space);
+        p = (dim == 2) ? Point<dim>(start[0], start[1] + i * space) : Point<dim>(start[0], start[1] + i * space, start[2]);
       }
       else if(i*space < 1.5 * dx){
-        p = Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx);
+        p = (dim == 2) ? Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx) : Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx, start[2]);
       }
       else{
-        p = Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space);
+        p = (dim == 2) ? Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space) : Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space, start[2]);
       }
       if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
         cylinder_points.push_back(p);
       }
-
     }
   }
 
@@ -3666,16 +3684,28 @@ namespace NS_TRBDF2 {
 
   // pressure average over time
   template<int dim>
-  void NavierStokesProjection<dim>::compute_pressure_avg_over_boundary(int n) {
+  void NavierStokesProjection<dim>::compute_pressure_avg_over_boundary(int n, double height, int n_points) {
+    double avg_pres = 0.0;
     for(int i = 0; i < cylinder_points.size(); i++) {
+      int count = 0;
+      for(int j = 0; j < n_points; j++) {
+        if(dim == 3)
+          cylinder_points[i][2] = j * (height / (n_points-1));
+        if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned())  {
+          avg_pres += VectorTools::point_value(dof_handler_pressure, pres_n, cylinder_points[i]) / n_points;
+          count++;
+        }
+      }
+      std::cout << Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) << ": " << count << " of " << n_points << std::endl;
+
       if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
           GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned())  {
-        double pres = VectorTools::point_value(dof_handler_pressure, pres_n, cylinder_points[i]);
         if(n > 1) {
-          avg_pressure[i] = ((n-1) * avg_pressure[i] + pres) / n;
+          avg_pressure[i] = ((n-1) * avg_pressure[i] + avg_pres) / n;
         }
         else {
-          avg_pressure.push_back(pres);
+          avg_pressure.push_back(avg_pres);
         }
       }
     }
@@ -4066,10 +4096,10 @@ namespace NS_TRBDF2 {
       GridGenerator::merge_triangulations({&triangulation_tmp2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8},
                                           triangulation_tmp, 1e-12, true);
       GridTools::scale(10.0, triangulation_tmp);
-      triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
-      TransfiniteInterpolationManifold<2> inner_manifold;
-      inner_manifold.initialize(triangulation_tmp);
-      triangulation_tmp.set_manifold(1, inner_manifold);
+      // triangulation_tmp.set_manifold(0, PolarManifold<2>(Point<2>(1.0, 1.0)));
+      // TransfiniteInterpolationManifold<2> inner_manifold;
+      // inner_manifold.initialize(triangulation_tmp);
+      // triangulation_tmp.set_manifold(1, inner_manifold);
       for(const auto& face : triangulation_tmp.active_face_iterators()) {
         if(face->at_boundary()) {
           const Point<dim> center = face->center();
@@ -4192,10 +4222,10 @@ namespace NS_TRBDF2 {
       height = 20.0;
       length = 30.0;    }
     else {
-      center = Point<dim>(0.2, 0.2);
-      radius = 0.05;
-      height = 0.41;
-      length = 2.2;
+      center = Point<dim>(2.0, 2.0);
+      radius = 0.5;
+      height = 4.1;
+      length = 22.0;
    }
     if(!empty){
       if(square_cylinder) {
@@ -4388,7 +4418,7 @@ int main(int argc, char *argv[]) {
     const auto& curr_rank = Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
     deallog.depth_console(data.verbose && curr_rank == 0 ? 2 : 0);
 
-    NavierStokesProjection<2> test(data);
+    NavierStokesProjection<3> test(data);
     test.run(data.verbose, data.output_interval);
 
     if(curr_rank == 0)
