@@ -2747,7 +2747,8 @@ namespace NS_TRBDF2 {
 
       /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
       GridGenerator::channel_with_cylinder(tria1, 0.045, 4, 2.0, true);
-      GridTools::shift(Tensor<1, dim>({0.8, 0.8, 0.0}), tria1);
+      
+      GridTools::shift(Tensor<1, dim>({0.8, 0.8}), tria1);
 
       GridGenerator::subdivided_hyper_rectangle(tria2, {8, 4, 4},
                                                 Point<dim>(0.0, 0.8, 0.0),
@@ -2785,10 +2786,10 @@ namespace NS_TRBDF2 {
       GridTools::scale(10.0, triangulation); /*--- Scale triangulation in order to work with proper non-dimensional configuration ---*/
 
       /*--- Attach manifold (manifold ids are already copied) ---*/
-      triangulation.set_manifold(0, CylindricalManifold<dim>(Tensor<1, dim>({0.0, 0.0, 1.0}), Point<dim>(10.0, 10.0, 0.0)));
-      TransfiniteInterpolationManifold<dim> inner_manifold;
-      inner_manifold.initialize(triangulation);
-      triangulation.set_manifold(1, inner_manifold);
+      // triangulation.set_manifold(0, CylindricalManifold<dim>(Tensor<1, dim>({0.0, 0.0, 1.0}), Point<dim>(10.0, 10.0, 0.0)));
+      // TransfiniteInterpolationManifold<dim> inner_manifold;
+      // inner_manifold.initialize(triangulation);
+      // triangulation.set_manifold(1, inner_manifold);
 
       /*--- Set boundary id ---*/
       for(const auto& face : triangulation.active_face_iterators()) {
@@ -2958,9 +2959,40 @@ namespace NS_TRBDF2 {
 
     triangulation.clear();
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation, {30, 20},
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD);
+
+    GridGenerator::subdivided_hyper_rectangle(tria1, {30, 2},
                                               Point<dim>(0.0, 0.0),
+                                              Point<dim>(30.0, 0.2));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {30, 2},
+                                              Point<dim>(0.0, 19.8),
                                               Point<dim>(30.0, 20.0));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 2},
+                                              Point<dim>(0.0, 0.2),
+                                              Point<dim>(30.0, 0.6));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 2},
+                                              Point<dim>(0.0, 19.4),
+                                              Point<dim>(30.0, 19.8));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.6),
+                                              Point<dim>(30.0, 1.0));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
+                                              Point<dim>(0.0, 19.0),
+                                              Point<dim>(30.0, 19.4));
+
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18},
+                                              Point<dim>(0.0, 1.0),
+                                              Point<dim>(30.0, 19.0));
+
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7},
+                                        triangulation, 1e-8, true);
+
 
     /*--- Set boundary id ---*/
     for(const auto& face : triangulation.active_face_iterators()) {
@@ -3003,9 +3035,36 @@ namespace NS_TRBDF2 {
 
     triangulation.clear();
 
-    GridGenerator::subdivided_hyper_rectangle(triangulation, {30, 20, 3},
+    parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
+                                              tria2(MPI_COMM_WORLD),
+                                              tria3(MPI_COMM_WORLD),
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD);
+
+    GridGenerator::subdivided_hyper_rectangle(tria1, {30, 2, 3},
                                               Point<dim>(0.0, 0.0, 0.0),
+                                              Point<dim>(30.0, 0.2, numbers::PI));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {30, 2, 3},
+                                              Point<dim>(0.0, 19.8, 0.0),
                                               Point<dim>(30.0, 20.0, numbers::PI));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 2, 3},
+                                              Point<dim>(0.0, 0.2, 0.0),
+                                              Point<dim>(30.0, 0.6, numbers::PI));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 2, 3},
+                                              Point<dim>(0.0, 19.4, 0.0),
+                                              Point<dim>(30.0, 19.8, numbers::PI));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(0.0, 0.6, 0.0),
+                                              Point<dim>(30.0, 1.0, numbers::PI));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1, 3},
+                                              Point<dim>(0.0, 19.0, 0.0),
+                                              Point<dim>(30.0, 19.4, numbers::PI));
+
+    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18, 3},
+                                              Point<dim>(0.0, 1.0, 0.0),
+                                              Point<dim>(30.0, 19.0));
 
     /*--- Set boundary id ---*/
     for(const auto& face : triangulation.active_face_iterators()) {
@@ -4418,7 +4477,7 @@ int main(int argc, char *argv[]) {
     const auto& curr_rank = Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
     deallog.depth_console(data.verbose && curr_rank == 0 ? 2 : 0);
 
-    NavierStokesProjection<3> test(data);
+    NavierStokesProjection<2> test(data);
     test.run(data.verbose, data.output_interval);
 
     if(curr_rank == 0)
