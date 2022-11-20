@@ -73,7 +73,7 @@ namespace EquationData {
     (void)component;
     AssertIndexRange(component, 1);
 
-    return 30.0 - p(0);
+    return 2.5 - p(0);
   }
 
 } // namespace EquationData
