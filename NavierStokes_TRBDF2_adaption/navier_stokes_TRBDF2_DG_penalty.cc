@@ -490,7 +490,8 @@ namespace NS_TRBDF2 {
       velocity and 1 for pressure). ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old(data, 0),
-                                                                   phi_old_extr(data, 0);
+                                                                   phi_old_extr(data, 0),
+                                                                   phi_force(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
       FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
 
@@ -513,6 +514,9 @@ namespace NS_TRBDF2 {
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(src[3], EvaluationFlags::values);
 
+        phi_force.reinit(cell);
+        phi_force.gather_evaluate(src[4], EvaluationFlags::values);
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
           const auto& u_n                = phi_old.get_value(q);
@@ -530,7 +534,7 @@ namespace NS_TRBDF2 {
           const auto& dx                 = phi_deltas.get_value(q);
           const auto& point_vectorized   = phi.quadrature_point(q);
 
-          phi.submit_value(1.0/(gamma*dt)*u_n, q); /*--- 'submit_value' contains quantites that we want to test against the
+          phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
                                                           test function ---*/
           phi.submit_gradient(-a21*viscosity.value(point_vectorized, grad_u_n, dx, Re)*grad_u_n +
                                a21*tensor_product_u_n + p_n_times_identity, q);
@@ -545,7 +549,8 @@ namespace NS_TRBDF2 {
       /*--- We first start by declaring the suitable instances to read already available quantities. ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old(data, 0),
-                                                                   phi_int(data, 0);
+                                                                   phi_int(data, 0),
+                                                                   phi_force(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
       FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
 
@@ -561,6 +566,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(src[4], EvaluationFlags::values);
+
+        phi_force.reinit(cell);
+        phi_force.gather_evaluate(src[5], EvaluationFlags::values);
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -581,7 +589,7 @@ namespace NS_TRBDF2 {
           const auto& dx                       = phi_deltas.get_value(q);
           const auto& point_vectorized         = phi.quadrature_point(q);
 
-          phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma, q);
+          phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma + phi_force.get_value(q), q);
           phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
                              a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma -
                              a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
@@ -2389,6 +2397,8 @@ namespace NS_TRBDF2 {
 
     LinearAlgebra::distributed::Vector<double> deltas;
 
+    LinearAlgebra::distributed::Vector<double> artificial_force;
+
     /*--- Variables for statistics ---*/
     std::vector<Point<dim>> cylinder_points;
     std::vector<Point<dim>> horizontal_wake_points;
@@ -2467,6 +2477,8 @@ namespace NS_TRBDF2 {
     void compute_lipschitz_number();
 
     void compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity);
+
+    void compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel);
 
     /*--- Technical member to handle the various steps ---*/
     std::shared_ptr<MatrixFree<dim, double>> matrix_free_storage;
@@ -3179,6 +3191,7 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
     matrix_free_storage->initialize_dof_vector(grad_pres_int, 0);
+    matrix_free_storage->initialize_dof_vector(artificial_force, 0);
 
     matrix_free_storage->initialize_dof_vector(pres_int, 1);
     matrix_free_storage->initialize_dof_vector(pres_n, 1);
@@ -3357,12 +3370,12 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n, deltas});
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n, deltas, artificial_force});
       navier_stokes_matrix.set_u_extr(u_extr);
       u_star = u_extr;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr, deltas});
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr, deltas, artificial_force});
       navier_stokes_matrix.set_u_extr(u_extr);
       u_star = u_extr;
     }
@@ -3940,7 +3953,23 @@ namespace NS_TRBDF2 {
       output_drag << drag << std::endl;
     }
   }
+  
+  template <int dim>
+  void NavierStokesProjection<dim>::compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel) {
+    // calculate uniform artificial force
+    double force = 0.1 * (1.0 - VectorTools::compute_mean_value(MappingQ1<dim>(), dof_handler_velocity, quadrature_velocity, vel, 0));
 
+    // interpolate force over domain
+    for(const auto& cell: dof_handler_velocity.active_cell_iterators()) {
+      if(cell->is_locally_owned()) {
+        std::vector<types::global_dof_index> dof_indices(fe_velocity.dofs_per_cell);
+        cell->get_dof_indices(dof_indices);
+        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
+          artificial_force(dof_indices[idx]) = force;
+        }
+      }
+    }
+  }
 
   // @sect{ <code>NavierStokesProjection::refine_mesh</code>}
 
@@ -4342,6 +4371,9 @@ namespace NS_TRBDF2 {
       n++;
       pcout << "Step = " << n << " Time = " << time << std::endl;
 
+      /*--- compute artificial force for first step ---*/
+      compute_artificial_force(u_n);
+
       /*--- First stage of TR-BDF2 and we start by setting the proper flag ---*/
       TR_BDF2_stage = 1;
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
@@ -4367,6 +4399,9 @@ namespace NS_TRBDF2 {
       u_tmp.equ(-gamma*dt, u_tmp);
       u_n_gamma += u_tmp; /*--- u_n_gamma = u_star - gamma*dt*grad(pres_int) ---*/
       u_n_minus_1 = u_n;
+
+      /*--- compute artificial force for second step ---*/
+      compute_artificial_force(u_n_gamma);
 
       /*--- Second stage of TR-BDF2 ---*/
       TR_BDF2_stage = 2;
