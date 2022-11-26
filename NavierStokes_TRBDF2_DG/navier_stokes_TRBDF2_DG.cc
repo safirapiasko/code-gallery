@@ -696,17 +696,31 @@ namespace NS_TRBDF2 {
         phi_old_press.gather_evaluate(src[2], EvaluationFlags::values);
         phi.reinit(face);
 
+        const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = 1.0;
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& n_plus             = phi.get_normal_vector(q);
+          const auto& n_plus                 = phi.get_normal_vector(q);
 
-          const auto& grad_u_old         = phi_old.get_gradient(q);
-          const auto& tensor_product_u_n = outer_product(phi_old.get_value(q), phi_old_extr.get_value(q));
-          const auto& p_old              = phi_old_press.get_value(q);
+          const auto& grad_u_old             = phi_old.get_gradient(q);
+          const auto& tensor_product_u_n     = outer_product(phi_old.get_value(q), phi_old_extr.get_value(q));
+          const auto& p_old                  = phi_old_press.get_value(q);
 
-          phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus, q);
+          const auto& u_int_m                = Tensor<1, dim, VectorizedArray<Number>>();
+          const auto& tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
+
+          const auto& lambda                 = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+          const auto& lambda_old             = std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& jump_u_old             = phi_old.get_value(q) - u_int_m;
+
+          phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
+                           a22/Re*2.0*coef_jump*u_int_m -
+                           aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m - a21*lambda_old*jump_u_old, q);
+          phi.submit_normal_derivative(-aux_coeff*theta_v*a22/Re*u_int_m, q); /*--- This is equivalent to multiply to the gradient
+                                                                                    with outer product and use 'submit_gradient' ---*/
         }
-        phi.integrate_scatter(EvaluationFlags::values, dst);
+        phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
     }
     else {
@@ -729,6 +743,9 @@ namespace NS_TRBDF2 {
         phi_int_extr.gather_evaluate(src[3], EvaluationFlags::values);
         phi.reinit(face);
 
+        const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = 1.0;
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
           const auto& n_plus                   = phi.get_normal_vector(q);
@@ -739,10 +756,23 @@ namespace NS_TRBDF2 {
           const auto& tensor_product_u_n_gamma = outer_product(phi_int.get_value(q), phi_int.get_value(q));
           const auto& p_old                    = phi_old_press.get_value(q);
 
+          const auto& u_m                      = Tensor<1, dim, VectorizedArray<Number>>();
+          const auto& tensor_product_u_m       = outer_product(u_m, phi_int_extr.get_value(q));
+
+          const auto& lambda                   = std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
+          const auto& lambda_old               = std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& lambda_int               = std::abs(scalar_product(phi_int.get_value(q), n_plus));
+          const auto& jump_u_old               = phi_old.get_value(q) - u_m;
+          const auto& jump_u_int               = phi_int.get_value(q) - u_m;
+
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
-                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus, q);
+                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
+                           a33/Re*2.0*coef_jump*u_m -
+                           aux_coeff*a33*tensor_product_u_m*n_plus + a33*lambda*u_m -
+                           a31*lambda_old*jump_u_old - a32*lambda_int*jump_u_int, q);
+          phi.submit_normal_derivative(-aux_coeff*theta_v*a33/Re*u_m, q);
         }
-        phi.integrate_scatter(EvaluationFlags::values, dst);
+        phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
     }
   }
@@ -832,8 +862,8 @@ namespace NS_TRBDF2 {
 
       /*--- Now we loop over all the quadrature points to compute the integrals ---*/
       for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
-        const auto& n_plus           = phi_p.get_normal_vector(q);
-        const auto& avg_u_star_star  = 0.5*(phi_proj_p.get_value(q) + phi_proj_m.get_value(q));
+        const auto& n_plus          = phi_p.get_normal_vector(q);
+        const auto& avg_u_star_star = 0.5*(phi_proj_p.get_value(q) + phi_proj_m.get_value(q));
 
         phi_p.submit_value(-coeff*scalar_product(avg_u_star_star, n_plus), q);
         phi_m.submit_value(coeff*scalar_product(avg_u_star_star, n_plus), q);
@@ -941,10 +971,10 @@ namespace NS_TRBDF2 {
 
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& u_curr                   = phi.get_value(q);
-          const auto& grad_u_curr              = phi.get_gradient(q);
-          const auto& u_n1_int                 = phi_int_extr.get_value(q);
-          const auto& tensor_product_u_curr    = outer_product(u_curr, u_n1_int);
+          const auto& u_curr                = phi.get_value(q);
+          const auto& grad_u_curr           = phi.get_gradient(q);
+          const auto& u_n1_int              = phi_int_extr.get_value(q);
+          const auto& tensor_product_u_curr = outer_product(u_curr, u_n1_int);
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_curr, q);
           phi.submit_gradient(-a33*tensor_product_u_curr + a33/Re*grad_u_curr, q);
@@ -1078,27 +1108,20 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
+        const double coef_trasp = 0.0;
+
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& n_plus      = phi.get_normal_vector(q);
-          const auto& grad_u_int  = phi.get_gradient(q);
-          const auto& u_int       = phi.get_value(q);
+          const auto& n_plus               = phi.get_normal_vector(q);
+          const auto& grad_u_int           = phi.get_gradient(q);
+          const auto& u_int                = phi.get_value(q);
+          const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
 
-          auto u_int_m            = u_int;
-          auto grad_u_int_m       = grad_u_int;
-          for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-            u_int_m[1][v]         = -u_int_m[1][v];
+          const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-            grad_u_int_m[0][0][v] = -grad_u_int_m[0][0][v];
-            grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
-          }
-
-          const auto& lambda      = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-
-          phi.submit_value(a22/Re*(-(0.5*(grad_u_int + grad_u_int_m))*n_plus + coef_jump*(u_int - u_int_m)) +
-                           a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
-                           a22*0.5*lambda*(u_int - u_int_m), q);
-          phi.submit_normal_derivative(-theta_v*a22/Re*(u_int - u_int_m), q);
+          phi.submit_value(a22/Re*(-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+                           a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
+          phi.submit_normal_derivative(-theta_v*a22/Re*u_int, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -1117,27 +1140,20 @@ namespace NS_TRBDF2 {
 
         const auto coef_jump = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
+        const double coef_trasp = 0.0;
+
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& n_plus  = phi.get_normal_vector(q);
-          const auto& grad_u  = phi.get_gradient(q);
-          const auto& u       = phi.get_value(q);
+          const auto& n_plus           = phi.get_normal_vector(q);
+          const auto& grad_u           = phi.get_gradient(q);
+          const auto& u                = phi.get_value(q);
+          const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
 
-          auto u_m            = u;
-          auto grad_u_m       = grad_u;
-          for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-            u_m[1][v]         = -u_m[1][v];
+          const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
-            grad_u_m[0][0][v] = -grad_u_m[0][0][v];
-            grad_u_m[0][1][v] = -grad_u_m[0][1][v];
-          }
-
-          const auto& lambda  = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
-
-          phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
-                           a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
-                           a33*0.5*lambda*(u - u_m), q);
-          phi.submit_normal_derivative(-theta_v*a33/Re*(u - u_m), q);
+          phi.submit_value(a33/Re*(-grad_u*n_plus + 2.0*coef_jump*u) +
+                           a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
+          phi.submit_normal_derivative(-theta_v*a33/Re*u, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -1221,27 +1237,7 @@ namespace NS_TRBDF2 {
   assemble_boundary_term_pressure(const MatrixFree<dim, Number>&               data,
                                   Vec&                                         dst,
                                   const Vec&                                   src,
-                                  const std::pair<unsigned int, unsigned int>& face_range) const {
-    FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_p, 1, Number> phi(data, true, 1, 1);
-
-    for(unsigned int face = face_range.first; face < face_range.second; ++face) {
-      phi.reinit(face);
-      phi.gather_evaluate(src, true, true);
-
-      const auto coef_jump = C_p*std::abs((phi.get_normal_vector(0)*phi.inverse_jacobian(0))[dim - 1]);
-
-      for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-        const auto& n_plus    = phi.get_normal_vector(q);
-
-        const auto& grad_pres = phi.get_gradient(q);
-        const auto& pres      = phi.get_value(q);
-
-        phi.submit_value(-scalar_product(grad_pres, n_plus) + coef_jump*pres , q);
-        phi.submit_normal_derivative(-theta_p*pres, q);
-      }
-      phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
-    }
-  }
+                                  const std::pair<unsigned int, unsigned int>& face_range) const {}
 
 
   // Before coding the 'apply_add' function, which is the one that will perform the loop, we focus on
@@ -1416,10 +1412,10 @@ namespace NS_TRBDF2 {
 
           /*--- Loop over quadrature points ---*/
           for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const auto& u_curr                = phi.get_value(q);
-            const auto& grad_u_curr           = phi.get_gradient(q);
-            const auto& u_n1_int              = phi_int_extr.get_value(q);
-            const auto& tensor_product_u_curr = outer_product(u_curr, u_n1_int);
+            const auto& u_curr                   = phi.get_value(q);
+            const auto& grad_u_curr              = phi.get_gradient(q);
+            const auto& u_n1_int                 = phi_int_extr.get_value(q);
+            const auto& tensor_product_u_curr    = outer_product(u_curr, u_n1_int);
 
             phi.submit_value(1.0/((1.0 - gamma)*dt)*u_curr, q);
             phi.submit_gradient(-a33*tensor_product_u_curr + a33/Re*grad_u_curr, q);
@@ -1608,6 +1604,8 @@ namespace NS_TRBDF2 {
 
         const auto coef_jump = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
+        const double coef_trasp = 0.0;
+
         /*--- Loop over all dofs ---*/
         for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
           for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
@@ -1617,25 +1615,16 @@ namespace NS_TRBDF2 {
 
           /*--- Loop over quadrature points to compute the integral ---*/
           for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const auto& n_plus      = phi.get_normal_vector(q);
-            const auto& grad_u_int  = phi.get_gradient(q);
-            const auto& u_int       = phi.get_value(q);
+            const auto& n_plus               = phi.get_normal_vector(q);
+            const auto& grad_u_int           = phi.get_gradient(q);
+            const auto& u_int                = phi.get_value(q);
+            const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
 
-            auto u_int_m            = u_int;
-            auto grad_u_int_m       = grad_u_int;
-            for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-              u_int_m[1][v]         = -u_int_m[1][v];
+            const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-              grad_u_int_m[0][0][v] = -grad_u_int_m[0][0][v];
-              grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
-            }
-
-            const auto& lambda      = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-
-            phi.submit_value(a22/Re*(-(0.5*(grad_u_int + grad_u_int_m))*n_plus + coef_jump*(u_int - u_int_m)) +
-                             a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
-                             a22*0.5*lambda*(u_int - u_int_m), q);
-            phi.submit_normal_derivative(-theta_v*a22/Re*(u_int - u_int_m), q);
+            phi.submit_value(a22/Re*(-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+                             a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
+            phi.submit_normal_derivative(-theta_v*a22/Re*u_int, q);
           }
           phi.integrate(true, true);
           diagonal[i] = phi.get_dof_value(i);
@@ -1662,6 +1651,8 @@ namespace NS_TRBDF2 {
 
         const auto coef_jump = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
+        const double coef_trasp = 0.0;
+
         /*--- Loop over all dofs ---*/
         for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
           for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
@@ -1674,22 +1665,13 @@ namespace NS_TRBDF2 {
             const auto& n_plus           = phi.get_normal_vector(q);
             const auto& grad_u           = phi.get_gradient(q);
             const auto& u                = phi.get_value(q);
-
-            auto u_m                     = u;
-            auto grad_u_m                = grad_u;
-            for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-              u_m[1][v] = -u_m[1][v];
-
-              grad_u_m[0][0][v] = -grad_u_m[0][0][v];
-              grad_u_m[0][1][v] = -grad_u_m[0][1][v];
-            }
+            const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
 
             const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
-            phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
-                             a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
-                             a33*0.5*lambda*(u - u_m), q);
-            phi.submit_normal_derivative(-theta_v*a33/Re*(u - u_m), q);
+            phi.submit_value(a33/Re*(-grad_u*n_plus + 2.0*coef_jump*u) +
+                             a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
+            phi.submit_normal_derivative(-theta_v*a33/Re*u, q);
           }
           phi.integrate(true, true);
           diagonal[i] = phi.get_dof_value(i);
@@ -1817,39 +1799,7 @@ namespace NS_TRBDF2 {
   assemble_diagonal_boundary_term_pressure(const MatrixFree<dim, Number>&               data,
                                            Vec&                                         dst,
                                            const unsigned int&                          ,
-                                           const std::pair<unsigned int, unsigned int>& face_range) const {
-    FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_p, 1, Number> phi(data, true, 1, 1);
-
-    AlignedVector<VectorizedArray<Number>> diagonal(phi.dofs_per_component);
-
-    for(unsigned int face = face_range.first; face < face_range.second; ++face) {
-      phi.reinit(face);
-
-      const auto coef_jump = C_p*std::abs((phi.get_normal_vector(0)*phi.inverse_jacobian(0))[dim - 1]);
-
-      for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
-        for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
-          phi.submit_dof_value(VectorizedArray<Number>(), j);
-        phi.submit_dof_value(make_vectorized_array<Number>(1.0), i);
-        phi.evaluate(EvaluationFlags::values | EvaluationFlags::gradients);
-
-        for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& n_plus    = phi.get_normal_vector(q);
-
-          const auto& grad_pres = phi.get_gradient(q);
-          const auto& pres      = phi.get_value(q);
-
-          phi.submit_value(-scalar_product(grad_pres, n_plus) + 2.0*coef_jump*pres , q);
-          phi.submit_normal_derivative(-theta_p*pres, q);
-        }
-        phi.integrate(EvaluationFlags::values | EvaluationFlags::gradients);
-        diagonal[i] = phi.get_dof_value(i);
-      }
-      for(unsigned int i = 0; i < phi.dofs_per_component; ++i)
-        phi.submit_dof_value(diagonal[i], i);
-      phi.distribute_local_to_global(dst);
-    }
-  }
+                                           const std::pair<unsigned int, unsigned int>& face_range) const { }
 
 
   // Put together all previous steps. We create a dummy auxliary vector that serves for the src input argument in
