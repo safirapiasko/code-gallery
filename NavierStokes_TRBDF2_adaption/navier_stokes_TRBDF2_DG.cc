@@ -534,8 +534,10 @@ namespace NS_TRBDF2 {
           const auto& dx                 = phi_deltas.get_value(q);
           const auto& point_vectorized   = phi.quadrature_point(q);
 
-          phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
-                                                          test function ---*/
+          phi.submit_value(1.0/(gamma*dt)*u_n, q); 
+
+          // phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
+          //                                                 test function ---*/
           phi.submit_gradient(-a21*viscosity.value(point_vectorized, grad_u_n, dx, Re)*grad_u_n +
                                a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
@@ -1497,7 +1499,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1) {
+      if(boundary_id == 1|| (!no_slip && boundary_id == 3)) {
         phi.reinit(face);
         phi.gather_evaluate(src, true, true);
 
@@ -3960,15 +3962,7 @@ namespace NS_TRBDF2 {
     double force = 0.1 * (1.0 - VectorTools::compute_mean_value(MappingQ1<dim>(), dof_handler_velocity, quadrature_velocity, vel, 0));
 
     // interpolate force over domain
-    for(const auto& cell: dof_handler_velocity.active_cell_iterators()) {
-      if(cell->is_locally_owned()) {
-        std::vector<types::global_dof_index> dof_indices(fe_velocity.dofs_per_cell);
-        cell->get_dof_indices(dof_indices);
-        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          artificial_force(dof_indices[idx]) = force;
-        }
-      }
-    }
+    VectorTools::interpolate(dof_handler_velocity, Functions::ConstantFunction<dim>(Vector<double>({force, 0.0})), artificial_force);
   }
 
   // @sect{ <code>NavierStokesProjection::refine_mesh</code>}
