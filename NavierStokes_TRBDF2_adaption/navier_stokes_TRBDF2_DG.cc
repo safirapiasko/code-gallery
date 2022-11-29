@@ -3078,7 +3078,7 @@ namespace NS_TRBDF2 {
 
     GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18, 3},
                                               Point<dim>(0.0, 1.0, 0.0),
-                                              Point<dim>(30.0, 19.0));
+                                              Point<dim>(30.0, 19.0, numbers::PI));
 
     /*--- Set boundary id ---*/
     for(const auto& face : triangulation.active_face_iterators()) {
