@@ -862,11 +862,19 @@ namespace NS_TRBDF2 {
 
       /*--- Now we loop over all the quadrature points to compute the integrals ---*/
       for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
-        const auto& n_plus          = phi_p.get_normal_vector(q);
-        const auto& avg_u_star_star = 0.5*(phi_proj_p.get_value(q) + phi_proj_m.get_value(q));
+        const auto& n_plus    = phi_p.get_normal_vector(q);
+        auto u_star_star_flux = 0.5*(phi_proj_p.get_value(q) + phi_proj_m.get_value(q));
+        if(scalar_product(phi_proj_p.get_value(q), n_plus)[0] >= 0.0 &&
+           scalar_product(phi_proj_m.get_value(q), n_plus)[0] >= 0.0) {
+             u_star_star_flux = phi_proj_p.get_value(q);
+        }
+        if(scalar_product(phi_proj_p.get_value(q), n_plus)[0] < 0.0 &&
+           scalar_product(phi_proj_m.get_value(q), n_plus)[0] < 0.0) {
+             u_star_star_flux = phi_proj_m.get_value(q);
+        }
 
-        phi_p.submit_value(-coeff*scalar_product(avg_u_star_star, n_plus), q);
-        phi_m.submit_value(coeff*scalar_product(avg_u_star_star, n_plus), q);
+        phi_p.submit_value(-coeff*scalar_product(u_star_star_flux, n_plus), q);
+        phi_m.submit_value(coeff*scalar_product(u_star_star_flux, n_plus), q);
       }
       phi_p.integrate_scatter(EvaluationFlags::values, dst);
       phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -2074,33 +2082,25 @@ namespace NS_TRBDF2 {
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
                                               tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD);
+                                              tria5(MPI_COMM_WORLD);
 
-    GridGenerator::subdivided_hyper_rectangle(tria1, {30, 2},
+    GridGenerator::subdivided_hyper_rectangle(tria1, {20, 1},
                                               Point<dim>(0.0, 0.0),
-                                              Point<dim>(30.0, 0.2));
-    GridGenerator::subdivided_hyper_rectangle(tria2, {30, 2},
-                                              Point<dim>(0.0, 19.8),
+                                              Point<dim>(30.0, 0.1));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {20, 1},
+                                              Point<dim>(0.0, 19.9),
                                               Point<dim>(30.0, 20.0));
-    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 2},
-                                              Point<dim>(0.0, 0.2),
-                                              Point<dim>(30.0, 0.6));
-    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 2},
-                                              Point<dim>(0.0, 19.4),
-                                              Point<dim>(30.0, 19.8));
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.6),
-                                              Point<dim>(30.0, 1.0));
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 19.0),
-                                              Point<dim>(30.0, 19.4));
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18},
-                                              Point<dim>(0.0, 1.0),
-                                              Point<dim>(30.0, 19.0));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {20, 1},
+                                              Point<dim>(0.0, 0.1),
+                                              Point<dim>(30.0, 0.3));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {20, 1},
+                                              Point<dim>(0.0, 19.7),
+                                              Point<dim>(30.0, 19.9));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {20, 1},
+                                              Point<dim>(0.0, 0.3),
+                                              Point<dim>(30.0, 19.7));
 
-    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7},
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5},
                                         triangulation, 1e-8, true);
 
     /*--- Set boundary id ---*/
@@ -2757,32 +2757,24 @@ namespace NS_TRBDF2 {
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
                                               tria4(MPI_COMM_WORLD),
-                                              tria5(MPI_COMM_WORLD),
-                                              tria6(MPI_COMM_WORLD),
-                                              tria7(MPI_COMM_WORLD);
+                                              tria5(MPI_COMM_WORLD);
 
-    GridGenerator::subdivided_hyper_rectangle(tria1, {30, 2},
+    GridGenerator::subdivided_hyper_rectangle(tria1, {20, 1},
                                               Point<dim>(0.0, 0.0),
-                                              Point<dim>(30.0, 0.2));
-    GridGenerator::subdivided_hyper_rectangle(tria2, {30, 2},
-                                              Point<dim>(0.0, 19.8),
+                                              Point<dim>(30.0, 0.1));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {20, 1},
+                                              Point<dim>(0.0, 19.9),
                                               Point<dim>(30.0, 20.0));
-    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 2},
-                                              Point<dim>(0.0, 0.2),
-                                              Point<dim>(30.0, 0.6));
-    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 2},
-                                              Point<dim>(0.0, 19.4),
-                                              Point<dim>(30.0, 19.8));
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
-                                              Point<dim>(0.0, 0.6),
-                                              Point<dim>(30.0, 1.0));
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 19.0),
-                                              Point<dim>(30.0, 19.4));
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18},
-                                              Point<dim>(0.0, 1.0),
-                                              Point<dim>(30.0, 19.0));
-    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7},
+    GridGenerator::subdivided_hyper_rectangle(tria3, {20, 1},
+                                              Point<dim>(0.0, 0.1),
+                                              Point<dim>(30.0, 0.3));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {20, 1},
+                                              Point<dim>(0.0, 19.7),
+                                              Point<dim>(30.0, 19.9));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {20, 1},
+                                              Point<dim>(0.0, 0.3),
+                                              Point<dim>(30.0, 19.7));
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5},
                                         triangulation_tmp, 1e-8, true);
     /*--- Set boundary id ---*/
     for(const auto& face : triangulation_tmp.active_face_iterators()) {
