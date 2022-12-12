@@ -3,14 +3,15 @@ subsection Physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
   set final_time   = 0.65
-  set Reynolds     = 100.0
-  set Cs2          = 0.0
+  set Reynolds     = 3900.0
+  set Cs2          = 0.01
+  set no_slip      = true
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt = 5.0e-5
+  set dt = 1.0e-3
   set time_restart = 0.0
 end
 
@@ -18,10 +19,12 @@ subsection Space discretization
   # In this subsection we declare the data that is relevant to the space discretization
   # we set the number of global refines the triangulation must have
   # and the degree k of the pair Q_(k+1)--Q_k of velocity--pressure finite element spaces
-  set n_of_refines = 4
+  set n_of_refines = 3
   set max_loc_refinements = 5
   set min_loc_refinements = 3
-  set big_domain = true
+  set big_domain = false
+  set square_cylinder = false
+  set empty = true
 end
 
 subsection Data solve
@@ -33,24 +36,24 @@ subsection Data solve
   set tolerance_fixed_point = 1e-8 # Set tolerance of fixed point
 end
 
-set saving directory = Re3900_DNS_restart_4ref_free_slip_rhs_flux_tolerance_fixed_point
+set saving directory = test
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 650
+set output_interval = 500
 
 #Finally we set the verbosity level
 set verbose = true
 
 #Set whether we are in presence of a restart or not
-set restart = true
+set restart = false
 
 #Set if the restart is done just specifying an initialization
-set as_initial_conditions = true
+set as_initial_conditions = false
 
 #Set if you want to linearly modify the Reynolds number
-set modify_Reynolds = true
+set modify_Reynolds = false
 
 #Set if you want to save files for possible restart
-set save_for_restart = true
+set save_for_restart = false

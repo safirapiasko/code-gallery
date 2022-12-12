@@ -2469,13 +2469,15 @@ namespace NS_TRBDF2 {
   private:
     void compute_lift_and_drag();
 
-    void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radiur);
+    void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radius);
+
+    void initialize_points_around_square_cylinder(const unsigned int n_points, Point<dim> start, double dx);    
 
     std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
 
     void compute_pressure_avg_over_boundary(int n);
 
-    void compute_stress_avg_over_boundary(int n);
+    void compute_stress_avg_over_boundary(int n, Point<dim> center, double object_length);
 
     void compute_lipschitz_number();
 
@@ -2538,6 +2540,7 @@ namespace NS_TRBDF2 {
     std::ofstream output_drag;
 
     std::ofstream output_avg_pressure;
+    std::ofstream output_avg_stress;
     std::ofstream output_Cp;
     std::ofstream output_Cf;
     std::ofstream output_lipschitz;
@@ -2587,9 +2590,9 @@ namespace NS_TRBDF2 {
     saving_dir(data.dir),
     restart(data.restart),
     save_for_restart(data.save_for_restart),
+    as_initial_conditions(data.as_initial_conditions),
     step_restart(data.step_restart),
     time_restart(data.time_restart),
-    as_initial_conditions(data.as_initial_conditions),
     modify_Reynolds(data.modify_Reynolds),
     pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0),
     time_out("./" + data.dir + "/time_analysis_" +
@@ -2600,14 +2603,7 @@ namespace NS_TRBDF2 {
     output_n_dofs_pressure("./" + data.dir + "/n_dofs_pressure.dat", std::ofstream::out),
     output_lift("./" + data.dir + "/lift.dat", std::ofstream::out),
     output_drag("./" + data.dir + "/drag.dat", std::ofstream::out),
-    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out),
-    output_avg_pressure("./" + data.dir + "/avg_p.dat", std::ofstream::out),
-    output_Cp("./" + data.dir + "/Cp.dat", std::ofstream::out),
-    output_Cf("./" + data.dir + "/Cf.dat", std::ofstream::out),
-    out_vel_hor("./" + data.dir + "/out_vel_hor.dat", std::ofstream::out),
-    out_vel_ver1("./" + data.dir + "/out_vel_ver1.dat", std::ofstream::out),
-    out_vel_ver2("./" + data.dir + "/out_vel_ver2.dat", std::ofstream::out),
-    out_vel_ver3("./" + data.dir + "/out_vel_ver3.dat", std::ofstream::out)    {
+    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out)  {
 
       if(EquationData::degree_p < 1) {
         pcout
@@ -2619,7 +2615,6 @@ namespace NS_TRBDF2 {
       AssertThrow(!((dt <= 0.0) || (dt > 0.5*T)), ExcInvalidTimeStep(dt, 0.5*T));
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
-
       if(square_cylinder)
         create_triangulation_with_square(n_refines);
       else

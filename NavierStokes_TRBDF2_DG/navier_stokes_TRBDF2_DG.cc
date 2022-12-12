@@ -285,7 +285,7 @@ namespace NS_TRBDF2 {
     const double theta_v = 0.0;
     const double theta_p = 1.0;
     const double C_p     = 1.0*(fe_degree_p + 1)*(fe_degree_p + 1);
-    const double C_u     = 10.0*(fe_degree_v + 1)*(fe_degree_v + 1);
+    const double C_u     = 1.0*(fe_degree_v + 1)*(fe_degree_v + 1);
 
     Vec                          u_extr; /*--- Auxiliary variable to update the extrapolated velocity ---*/
 
@@ -599,10 +599,10 @@ namespace NS_TRBDF2 {
           /*--- Compute data for upwind flux ---*/
           const auto& lambda                 = std::max(std::abs(scalar_product(phi_old_p.get_value(q), n_plus)),
                                                         std::abs(scalar_product(phi_old_m.get_value(q), n_plus)));
-          const auto& jump_u                 = phi_old_p.get_value(q) - phi_old_m.get_value(q);
+          const auto& jump_u_old             = phi_old_p.get_value(q) - phi_old_m.get_value(q);
 
-          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus - a21*0.5*lambda*jump_u, q);
-          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus + a21*0.5*lambda*jump_u, q);
+          phi_p.submit_value((a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus - avg_p_old*n_plus - a21*0.5*lambda*jump_u_old, q);
+          phi_m.submit_value(-(a21/Re*avg_grad_u_old - a21*avg_tensor_product_u_n)*n_plus + avg_p_old*n_plus + a21*0.5*lambda*jump_u_old, q);
         }
         phi_p.integrate_scatter(EvaluationFlags::values, dst);
         phi_m.integrate_scatter(EvaluationFlags::values, dst);
@@ -703,14 +703,14 @@ namespace NS_TRBDF2 {
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-          const auto& n_plus             = phi.get_normal_vector(q);
+          const auto& n_plus                 = phi.get_normal_vector(q);
 
-          const auto& grad_u_old         = phi_old.get_gradient(q);
-          const auto& tensor_product_u_n = outer_product(phi_old.get_value(q), phi_old_extr.get_value(q));
-          const auto& p_old              = phi_old_press.get_value(q);
-          const auto& point_vectorized   = phi.quadrature_point(q);
-          auto u_int_m                   = Tensor<1, dim, VectorizedArray<Number>>();
+          const auto& grad_u_old             = phi_old.get_gradient(q);
+          const auto& tensor_product_u_n     = outer_product(phi_old.get_value(q), phi_old_extr.get_value(q));
+          const auto& p_old                  = phi_old_press.get_value(q);
+          auto u_int_m                       = Tensor<1, dim, VectorizedArray<Number>>();
           if(boundary_id == 0) {
+            const auto& point_vectorized     = phi.quadrature_point(q);
             for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
               Point<dim> point; /*--- The point returned by the 'quadrature_point' function is not an instance of Point
                                       and so it is not ready to be directly used. We need to pay attention to the
@@ -721,13 +721,13 @@ namespace NS_TRBDF2 {
                 u_int_m[d][v] = vel_boundary_inflow.value(point, d);
             }
           }
-          const auto tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
+          const auto& tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
 
-          const auto& lambda                = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda                 = (boundary_id == 1 || boundary_id == 3) ?
                                                0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-          const auto& lambda_old            = (boundary_id == 1 || boundary_id == 3) ?
+          const auto& lambda_old             = (boundary_id == 1 || boundary_id == 3) ?
                                                0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& jump_u_old            = phi_old.get_value(q) - u_int_m;
+          const auto& jump_u_old             = phi_old.get_value(q) - u_int_m;
 
           phi.submit_value((a21/Re*grad_u_old - a21*tensor_product_u_n)*n_plus - p_old*n_plus +
                            a22/Re*2.0*coef_jump*u_int_m -
@@ -772,9 +772,9 @@ namespace NS_TRBDF2 {
           const auto& tensor_product_u_n       = outer_product(phi_old.get_value(q), phi_old.get_value(q));
           const auto& tensor_product_u_n_gamma = outer_product(phi_int.get_value(q), phi_int.get_value(q));
           const auto& p_old                    = phi_old_press.get_value(q);
-          const auto& point_vectorized         = phi.quadrature_point(q);
           auto u_m                             = Tensor<1, dim, VectorizedArray<Number>>();
           if(boundary_id == 0) {
+            const auto& point_vectorized       = phi.quadrature_point(q);
             for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
               Point<dim> point;
               for(unsigned int d = 0; d < dim; ++d)
@@ -783,16 +783,16 @@ namespace NS_TRBDF2 {
                 u_m[d][v] = vel_boundary_inflow.value(point, d);
             }
           }
-          const auto tensor_product_u_m = outer_product(u_m, phi_int_extr.get_value(q));
+          const auto& tensor_product_u_m       = outer_product(u_m, phi_int_extr.get_value(q));
 
-          const auto& lambda            = (boundary_id == 1 || boundary_id == 3) ?
-                                           0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
-          const auto& lambda_old        = (boundary_id == 1 || boundary_id == 3) ?
-                                           0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& lambda_int        = (boundary_id == 1 || boundary_id == 3) ?
-                                           0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
-          const auto& jump_u_old        = phi_old.get_value(q) - u_m;
-          const auto& jump_u_int        = phi_int.get_value(q) - u_m;
+          const auto& lambda                   = (boundary_id == 1 || boundary_id == 3) ?
+                                                 0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
+          const auto& lambda_old               = (boundary_id == 1 || boundary_id == 3) ?
+                                                 0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
+          const auto& lambda_int               = (boundary_id == 1 || boundary_id == 3) ?
+                                                 0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
+          const auto& jump_u_old               = phi_old.get_value(q) - u_m;
+          const auto& jump_u_int               = phi_int.get_value(q) - u_m;
 
           phi.submit_value((a31/Re*grad_u_old + a32/Re*grad_u_int -
                            a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
@@ -1180,19 +1180,14 @@ namespace NS_TRBDF2 {
         else {
           /*--- Now we loop over all quadrature points ---*/
           for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const auto& n_plus               = phi.get_normal_vector(q);
-            const auto& grad_u_int           = phi.get_gradient(q);
-            const auto& u_int                = phi.get_value(q);
+            const auto& n_plus      = phi.get_normal_vector(q);
+            const auto& grad_u_int  = phi.get_gradient(q);
+            const auto& u_int       = phi.get_value(q);
 
-            const auto& point_vectorized     = phi.quadrature_point(q);
-            auto u_int_m                     = u_int;
-            auto grad_u_int_m                = grad_u_int;
+            auto u_int_m            = u_int;
+            auto grad_u_int_m       = grad_u_int;
             for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-              Point<dim> point;
-              for(unsigned int d = 0; d < dim; ++d)
-                point[d] = point_vectorized[d][v];
-
-              u_int_m[1][v] = -u_int_m[1][v];
+              u_int_m[1][v]         = -u_int_m[1][v];
 
               grad_u_int_m[0][0][v] = -grad_u_int_m[0][0][v];
               grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
@@ -1245,25 +1240,20 @@ namespace NS_TRBDF2 {
         else {
           /*--- Now we loop over all quadrature points ---*/
           for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-            const auto& n_plus           = phi.get_normal_vector(q);
-            const auto& grad_u           = phi.get_gradient(q);
-            const auto& u                = phi.get_value(q);
+            const auto& n_plus  = phi.get_normal_vector(q);
+            const auto& grad_u  = phi.get_gradient(q);
+            const auto& u       = phi.get_value(q);
 
-            const auto& point_vectorized = phi.quadrature_point(q);
-            auto u_m                     = u;
-            auto grad_u_m                = grad_u;
+            auto u_m            = u;
+            auto grad_u_m       = grad_u;
             for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-              Point<dim> point;
-              for(unsigned int d = 0; d < dim; ++d)
-                point[d] = point_vectorized[d][v];
-
-              u_m[1][v] = -u_m[1][v];
+              u_m[1][v]         = -u_m[1][v];
 
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
 
-            const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
+            const auto& lambda  = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
             phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
                              a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
@@ -1359,7 +1349,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1) {
+      if(boundary_id == 1 || boundary_id == 3) {
         phi.reinit(face);
         phi.gather_evaluate(src, true, true);
 
@@ -1785,25 +1775,20 @@ namespace NS_TRBDF2 {
 
             /*--- Loop over quadrature points to compute the integral ---*/
             for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-              const auto& n_plus               = phi.get_normal_vector(q);
-              const auto& grad_u_int           = phi.get_gradient(q);
-              const auto& u_int                = phi.get_value(q);
+              const auto& n_plus      = phi.get_normal_vector(q);
+              const auto& grad_u_int  = phi.get_gradient(q);
+              const auto& u_int       = phi.get_value(q);
 
-              const auto& point_vectorized     = phi.quadrature_point(q);
-              auto u_int_m                     = u_int;
-              auto grad_u_int_m                = grad_u_int;
+              auto u_int_m            = u_int;
+              auto grad_u_int_m       = grad_u_int;
               for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-                Point<dim> point;
-                for(unsigned int d = 0; d < dim; ++d)
-                  point[d] = point_vectorized[d][v];
-
-                u_int_m[1][v] = -u_int_m[1][v];
+                u_int_m[1][v]         = -u_int_m[1][v];
 
                 grad_u_int_m[0][0][v] = -grad_u_int_m[0][0][v];
                 grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
               }
 
-              const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
+              const auto& lambda      = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
               phi.submit_value(a22/Re*(-(0.5*(grad_u_int + grad_u_int_m))*n_plus + coef_jump*(u_int - u_int_m)) +
                                a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
@@ -1877,25 +1862,20 @@ namespace NS_TRBDF2 {
 
             /*--- Loop over quadrature points to compute the integral ---*/
             for(unsigned int q = 0; q < phi.n_q_points; ++q) {
-              const auto& n_plus           = phi.get_normal_vector(q);
-              const auto& grad_u           = phi.get_gradient(q);
-              const auto& u                = phi.get_value(q);
+              const auto& n_plus  = phi.get_normal_vector(q);
+              const auto& grad_u  = phi.get_gradient(q);
+              const auto& u       = phi.get_value(q);
 
-              const auto& point_vectorized = phi.quadrature_point(q);
-              auto u_m                     = u;
-              auto grad_u_m                = grad_u;
+              auto u_m            = u;
+              auto grad_u_m       = grad_u;
               for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
-                Point<dim> point;
-                for(unsigned int d = 0; d < dim; ++d)
-                  point[d] = point_vectorized[d][v];
-
-                u_m[1][v] = -u_m[1][v];
+                u_m[1][v]         = -u_m[1][v];
 
                 grad_u_m[0][0][v] = -grad_u_m[0][0][v];
                 grad_u_m[0][1][v] = -grad_u_m[0][1][v];
               }
 
-              const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
+              const auto& lambda  = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
               phi.submit_value(a33/Re*(-(0.5*(grad_u + grad_u_m))*n_plus + coef_jump*(u - u_m)) +
                                a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
@@ -2037,7 +2017,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1) {
+      if(boundary_id == 1 || boundary_id == 3) {
         phi.reinit(face);
 
         const auto coef_jump = C_p*std::abs((phi.get_normal_vector(0)*phi.inverse_jacobian(0))[dim - 1]);
@@ -2423,21 +2403,53 @@ namespace NS_TRBDF2 {
     parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
-                                              tria4(MPI_COMM_WORLD);
+                                              tria4(MPI_COMM_WORLD),
+                                              tria5(MPI_COMM_WORLD),
+                                              tria6(MPI_COMM_WORLD),
+                                              tria7(MPI_COMM_WORLD),
+                                              tria8(MPI_COMM_WORLD),
+                                              tria9(MPI_COMM_WORLD),
+                                              tria10(MPI_COMM_WORLD),
+                                              tria11(MPI_COMM_WORLD),
+                                              tria12(MPI_COMM_WORLD);
 
-    GridGenerator::subdivided_hyper_rectangle(tria1, {60, 19},
-                                              Point<dim>(0.0, 0.0),
-                                              Point<dim>(30.0, 9.5));
-    GridGenerator::subdivided_hyper_rectangle(tria2, {19, 2},
-                                              Point<dim>(0.0, 9.5),
-                                              Point<dim>(9.5, 10.5));
-    GridGenerator::subdivided_hyper_rectangle(tria3, {39, 2},
-                                              Point<dim>(10.5, 9.5),
-                                              Point<dim>(30.0, 10.5));
-    GridGenerator::subdivided_hyper_rectangle(tria4, {60, 19},
-                                              Point<dim>(0.0, 10.5),
+    GridGenerator::subdivided_hyper_rectangle(tria1, {10, 16},
+                                              Point<dim>(0.0, 10.7),
+                                              Point<dim>(9.3, 20.0));
+    GridGenerator::subdivided_hyper_rectangle(tria2, {14, 16},
+                                              Point<dim>(9.3, 10.7),
+                                              Point<dim>(10.7, 20.0));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {20, 16},
+                                              Point<dim>(10.7, 10.7),
                                               Point<dim>(30.0, 20.0));
-    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4},
+    GridGenerator::subdivided_hyper_rectangle(tria4, {10, 14},
+                                              Point<dim>(0.0, 9.3),
+                                              Point<dim>(9.3, 10.7));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {14, 2},
+                                              Point<dim>(9.3, 10.5),
+                                              Point<dim>(10.7, 10.7));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {2, 10},
+                                              Point<dim>(9.3, 9.5),
+                                              Point<dim>(9.5, 10.5));
+    GridGenerator::subdivided_hyper_rectangle(tria7, {2, 10},
+                                              Point<dim>(10.5, 9.5),
+                                              Point<dim>(10.7, 10.5));
+    GridGenerator::subdivided_hyper_rectangle(tria8, {14, 2},
+                                              Point<dim>(9.3, 9.3),
+                                              Point<dim>(10.7, 9.5));
+    GridGenerator::subdivided_hyper_rectangle(tria9, {20, 14},
+                                              Point<dim>(10.7, 9.3),
+                                              Point<dim>(30.0, 10.7));
+    GridGenerator::subdivided_hyper_rectangle(tria10, {10, 16},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(9.3, 9.3));
+    GridGenerator::subdivided_hyper_rectangle(tria11, {14, 16},
+                                              Point<dim>(9.3, 0.0),
+                                              Point<dim>(10.7, 9.3));
+    GridGenerator::subdivided_hyper_rectangle(tria12, {20, 16},
+                                              Point<dim>(10.7, 0.0),
+                                              Point<dim>(30.0, 9.3));
+    GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7, &tria8, &tria9, &tria10, &tria11, &tria12},
                                          triangulation, 1e-8, true);
 
     /*--- Set boundary id ---*/
