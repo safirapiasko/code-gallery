@@ -3030,7 +3030,7 @@ namespace NS_TRBDF2 {
         else if(std::abs(center[2] - 0.0) < 1e-10)
           face->set_boundary_id(4);
         else {
-          Assert(std::abs(center[2] - numberss::PI) < 1.0e-10,
+          Assert(std::abs(center[2] - numbers::PI) < 1.0e-10,
                 ExcInternalError());
           face->set_boundary_id(5);
         }
@@ -3063,7 +3063,7 @@ namespace NS_TRBDF2 {
 
     GridGenerator::subdivided_hyper_rectangle(tria1, {15, 2},
                                               Point<dim>(0.0, 0.0),
-                                              Point<dim>(30.0, 0.2));
+                                              Point<dim>(15.0, 0.2));
     GridGenerator::subdivided_hyper_rectangle(tria2, {15, 2},
                                               Point<dim>(0.0, 9.8),
                                               Point<dim>(15.0, 10.0));
@@ -3177,7 +3177,7 @@ namespace NS_TRBDF2 {
         else if(std::abs(center[2] - 0.0) < 1e-10)
           face->set_boundary_id(4);
         else {
-          Assert(std::abs(center[2] - numberss::PI) < 1.0e-10,
+          Assert(std::abs(center[2] - numbers::PI) < 1.0e-10,
                 ExcInternalError());
           face->set_boundary_id(5);
         }
