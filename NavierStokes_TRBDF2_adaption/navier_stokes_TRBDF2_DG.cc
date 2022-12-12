@@ -253,6 +253,8 @@ namespace NS_TRBDF2 {
 
     void set_deltas(const Vec& src);
 
+    void set_y_plus(const Vec& src);
+
     void vmult_rhs_velocity(Vec& dst, const std::vector<Vec>& src) const;
 
     void vmult_rhs_pressure(Vec& dst, const std::vector<Vec>& src) const;
@@ -292,6 +294,7 @@ namespace NS_TRBDF2 {
 
     Vec u_extr; /*--- Auxiliary variable to update the extrapolated velocity ---*/
     Vec deltas;
+    Vec y_plus;
 
     EquationData::Velocity<dim>  vel_boundary_inflow; /*--- Auxiliary variable to impose velocity boundary conditions ---*/
 
@@ -395,7 +398,7 @@ namespace NS_TRBDF2 {
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
     MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(false), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
-                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas() {}
+                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(), y_plus() {}
 
 
   // We focus now on the constructor with runtime parameters storage
@@ -405,7 +408,7 @@ namespace NS_TRBDF2 {
   NavierStokesProjectionOperator(RunTimeParameters::Data_Storage& data):
     MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip),
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
-                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(),
+                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(), y_plus(),
                                            vel_boundary_inflow(data.initial_time),
                                            viscosity(data.initial_time, data.Cs2) {}
 
@@ -463,13 +466,22 @@ namespace NS_TRBDF2 {
     u_extr.update_ghost_values();
   }
 
-  // Setter of extrapolated velocity for different stages
+  // Setter of deltas
   //
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   set_deltas(const Vec& src) {
     deltas = src;
     deltas.update_ghost_values();
+  }
+
+  // Setter of y_plus
+  //
+  template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
+  void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
+  set_y_plus(const Vec& src) {
+    y_plus = src;
+    y_plus.update_ghost_values();
   }
 
 
@@ -493,7 +505,8 @@ namespace NS_TRBDF2 {
                                                                    phi_old_extr(data, 0),
                                                                    phi_force(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
       /*--- We loop over the cells in the range ---*/
       for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
@@ -517,6 +530,9 @@ namespace NS_TRBDF2 {
         phi_force.reinit(cell);
         phi_force.gather_evaluate(src[4], EvaluationFlags::values);
 
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(src[5], EvaluationFlags::values);
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
           const auto& u_n                = phi_old.get_value(q);
@@ -532,13 +548,12 @@ namespace NS_TRBDF2 {
             p_n_times_identity[d][d] = p_n;
 
           const auto& dx                 = phi_deltas.get_value(q);
-          const auto& point_vectorized   = phi.quadrature_point(q);
 
           phi.submit_value(1.0/(gamma*dt)*u_n, q); 
 
           // phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
           //                                                 test function ---*/
-          phi.submit_gradient(-a21*viscosity.value(point_vectorized, grad_u_n, dx, Re)*grad_u_n +
+          phi.submit_gradient(-a21*viscosity.value(phi_y_plus.get_value(q), grad_u_n, dx, Re)*grad_u_n +
                                a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
         }
@@ -554,7 +569,8 @@ namespace NS_TRBDF2 {
                                                                    phi_int(data, 0),
                                                                    phi_force(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
       /*--- We loop over the cells in the range ---*/
       for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
@@ -571,6 +587,9 @@ namespace NS_TRBDF2 {
 
         phi_force.reinit(cell);
         phi_force.gather_evaluate(src[5], EvaluationFlags::values);
+
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(src[6], EvaluationFlags::values);
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -589,12 +608,11 @@ namespace NS_TRBDF2 {
             p_n_times_identity[d][d] = p_n;
 
           const auto& dx                       = phi_deltas.get_value(q);
-          const auto& point_vectorized         = phi.quadrature_point(q);
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_n_gamma + phi_force.get_value(q), q);
           phi.submit_gradient(a32*tensor_product_u_n_gamma + a31*tensor_product_u_n -
-                             a32*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n_gamma -
-                             a31*viscosity.value(point_vectorized, grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
+                             a32*viscosity.value(phi_y_plus.get_value(q), grad_u_n_gamma, dx, Re)*grad_u_n_gamma -
+                             a31*viscosity.value(phi_y_plus.get_value(q), grad_u_n_gamma, dx, Re)*grad_u_n + p_n_times_identity, q);
 
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -624,7 +642,9 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press_p(data, true, 1),
                                                                        phi_old_press_m(data, false, 1);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -648,6 +668,11 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(src[3], EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(src[5], EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(src[5], EvaluationFlags::values);
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus                 = phi_p.get_normal_vector(q); /*--- The normal vector is the same
@@ -655,12 +680,10 @@ namespace NS_TRBDF2 {
                                                                                  it correspond to the outer normal ---*/
           const auto& dx_p                   = phi_deltas_p.get_value(q);
           const auto& dx_m                   = phi_deltas_m.get_value(q);
-          const auto& point_vectorized_p     = phi_p.quadrature_point(q);
-          const auto& point_vectorized_m     = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_old    = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*
+          const auto& avg_visc_grad_u_old    = viscosity.value(phi_y_plus_p.get_value(q), phi_old_p.get_symmetric_gradient(q), dx_p, Re)*
                                                phi_old_p.get_symmetric_gradient(q) +
-                                               viscosity.value(point_vectorized_m, phi_old_m.get_symmetric_gradient(q), dx_m, Re)*
+                                               viscosity.value(phi_y_plus_m.get_value(q), phi_old_m.get_symmetric_gradient(q), dx_m, Re)*
                                                phi_old_m.get_symmetric_gradient(q);
           const auto& avg_tensor_product_u_n = 0.5*(outer_product(phi_old_p.get_value(q), phi_old_extr_p.get_value(q)) +
                                                     outer_product(phi_old_m.get_value(q), phi_old_extr_m.get_value(q)));
@@ -685,7 +708,9 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press_p(data, true, 1),
                                                                        phi_old_press_m(data, false, 1);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++ face) {
@@ -709,23 +734,26 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(src[4], EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(src[6], EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(src[6], EvaluationFlags::values);
+
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi_p.n_q_points; ++q) {
           const auto& n_plus                      = phi_p.get_normal_vector(q);
 
           const auto& dx_p                        = phi_deltas_p.get_value(q);
           const auto& dx_m                        = phi_deltas_m.get_value(q);
-          const auto& point_vectorized_p          = phi_p.quadrature_point(q);
-          const auto& point_vectorized_m          = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_old         = viscosity.value(point_vectorized_p, phi_old_p.get_symmetric_gradient(q), dx_p, Re)*
+          const auto& avg_visc_grad_u_old         = viscosity.value(phi_y_plus_p.get_value(q), phi_old_p.get_symmetric_gradient(q), dx_p, Re)*
                                                     phi_old_p.get_symmetric_gradient(q) +
-                                                    viscosity.value(point_vectorized_m, phi_old_m.get_symmetric_gradient(q), dx_m, Re)*
+                                                    viscosity.value(phi_y_plus_m.get_value(q), phi_old_m.get_symmetric_gradient(q), dx_m, Re)*
                                                     phi_old_m.get_symmetric_gradient(q);
 
-          const auto& avg_visc_grad_u_int         = viscosity.value(point_vectorized_p, phi_int_p.get_symmetric_gradient(q), dx_p, Re)*
+          const auto& avg_visc_grad_u_int         = viscosity.value(phi_y_plus_p.get_value(q), phi_int_p.get_symmetric_gradient(q), dx_p, Re)*
                                                     phi_int_p.get_symmetric_gradient(q) +
-                                                    viscosity.value(point_vectorized_m, phi_int_m.get_symmetric_gradient(q), dx_m, Re)*
+                                                    viscosity.value(phi_y_plus_m.get_value(q), phi_int_m.get_symmetric_gradient(q), dx_m, Re)*
                                                     phi_int_m.get_symmetric_gradient(q);
 
           const auto& avg_tensor_product_u_n       = 0.5*(outer_product(phi_old_p.get_value(q), phi_old_p.get_value(q)) +
@@ -762,7 +790,8 @@ namespace NS_TRBDF2 {
                                                                        phi_old(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, false, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -776,6 +805,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(src[3], EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(src[5], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
         
@@ -811,10 +843,10 @@ namespace NS_TRBDF2 {
           const auto& lambda                 = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                                0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));                          
 
-          phi.submit_value((a21*viscosity.value(point_vectorized, grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
-                           p_old*n_plus + a22*2.0*viscosity.value(point_vectorized, grad_u_old, dx, Re)*coef_jump*u_int_m -
+          phi.submit_value((a21*viscosity.value(phi_y_plus.get_value(q), grad_u_old, dx, Re)*grad_u_old - a21*tensor_product_u_n)*n_plus -
+                           p_old*n_plus + a22*2.0*viscosity.value(phi_y_plus.get_value(q), grad_u_old, dx, Re)*coef_jump*u_int_m -
                            aux_coeff*a22*tensor_product_u_int_m*n_plus + a22*lambda*u_int_m, q);
-          phi.submit_gradient(-aux_coeff*theta_v*a22*viscosity.value(point_vectorized, grad_u_old, dx, Re)*
+          phi.submit_gradient(-aux_coeff*theta_v*a22*viscosity.value(phi_y_plus.get_value(q), grad_u_old, dx, Re)*
                              (outer_product(u_int_m, n_plus) + outer_product(n_plus, u_int_m)), q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -827,7 +859,8 @@ namespace NS_TRBDF2 {
                                                                        phi_int(data, true, 0),
                                                                        phi_int_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++ face) {
@@ -843,6 +876,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(src[4], EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(src[6], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
@@ -874,8 +910,8 @@ namespace NS_TRBDF2 {
           const auto& lambda             = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
                                            0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
 
-          const auto& visc_int           = viscosity.value(point_vectorized, grad_u_int, dx, Re);
-          const auto& visc_old           = viscosity.value(point_vectorized, grad_u_old, dx, Re);
+          const auto& visc_int           = viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re);
+          const auto& visc_old           = viscosity.value(phi_y_plus.get_value(q), grad_u_old, dx, Re);
 
           phi.submit_value((a31*visc_old*grad_u_old + a32*visc_int*grad_u_int -
                           a31*tensor_product_u_n - a32*tensor_product_u_n_gamma)*n_plus - p_old*n_plus +
@@ -1047,7 +1083,8 @@ namespace NS_TRBDF2 {
       this case serves for a bilinear form and so it will not used only to submit but also to read the src ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old_extr(data, 0);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
             /*--- We loop over all cells in the range ---*/
       for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
@@ -1059,6 +1096,9 @@ namespace NS_TRBDF2 {
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
+
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
           const auto& u_int                = phi.get_value(q);
@@ -1067,11 +1107,10 @@ namespace NS_TRBDF2 {
           const auto& tensor_product_u_int = outer_product(u_int, u_n_gamma_ov_2);
 
           const auto& dx                   = phi_deltas.get_value(q);
-          const auto& point_vectorized     = phi.quadrature_point(q);
 
           phi.submit_value(1.0/(gamma*dt)*u_int, q);
 
-          phi.submit_gradient(-a22*tensor_product_u_int + a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*grad_u_int, q);
+          phi.submit_gradient(-a22*tensor_product_u_int + a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re)*grad_u_int, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -1080,7 +1119,8 @@ namespace NS_TRBDF2 {
       /*--- We first start by declaring the suitable instances to read already available quantities. ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_int_extr(data, 0);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
       /*--- We loop over all cells in the range ---*/
       for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
@@ -1092,6 +1132,9 @@ namespace NS_TRBDF2 {
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
+
         /*--- Now we loop over all quadrature points ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
           const auto& u_curr                   = phi.get_value(q);
@@ -1100,10 +1143,9 @@ namespace NS_TRBDF2 {
           const auto& tensor_product_u_curr    = outer_product(u_curr, u_n1_int);
 
           const auto& dx                       = phi_deltas.get_value(q);
-          const auto& point_vectorized         = phi.quadrature_point(q);
 
           phi.submit_value(1.0/((1.0 - gamma)*dt)*u_curr, q);
-          phi.submit_gradient(-a33*tensor_product_u_curr + a33*viscosity.value(point_vectorized, grad_u_curr, dx, Re)*grad_u_curr, q);
+          phi.submit_gradient(-a33*tensor_product_u_curr + a33*viscosity.value(phi_y_plus.get_value(q), grad_u_curr, dx, Re)*grad_u_curr, q);
         }
         phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
       }
@@ -1126,7 +1168,9 @@ namespace NS_TRBDF2 {
                                                                        phi_old_extr_p(data, true, 0),
                                                                        phi_old_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       /*--- We loop over all faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -1144,6 +1188,11 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(y_plus, EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(y_plus, EvaluationFlags::values);
+
         const auto coef_jump = C_u*0.5*(std::abs((phi_p.get_normal_vector(0)*phi_p.inverse_jacobian(0))[dim - 1]) +
                                         std::abs((phi_m.get_normal_vector(0)*phi_m.inverse_jacobian(0))[dim - 1]));
 
@@ -1153,15 +1202,13 @@ namespace NS_TRBDF2 {
 
           const auto& dx_p                     = phi_deltas_p.get_value(q);
           const auto& dx_m                     = phi_deltas_m.get_value(q);
-          const auto& point_vectorized_p       = phi_p.quadrature_point(q);
-          const auto& point_vectorized_m       = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+          const auto& avg_visc_grad_u_int      = viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                                  phi_p.get_symmetric_gradient(q) +
-                                                 viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+                                                 viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                                  phi_m.get_symmetric_gradient(q);
-          const auto& avg_visc                 = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
-                                                        viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
+          const auto& avg_visc                 = 0.5 * (viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re) +
+                                                        viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re));
 
           const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
           const auto& avg_tensor_product_u_int = 0.5*(outer_product(phi_p.get_value(q), phi_old_extr_p.get_value(q)) +
@@ -1174,9 +1221,9 @@ namespace NS_TRBDF2 {
           phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  avg_visc * coef_jump*jump_u_int) -
                               a22*avg_tensor_product_u_int*n_plus - 0.5*a22*lambda*jump_u_int, q);
 
-          phi_p.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+          phi_p.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                  0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
-          phi_m.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+          phi_m.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                  0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
 
         }
@@ -1191,7 +1238,9 @@ namespace NS_TRBDF2 {
                                                                        phi_extr_p(data, true, 0),
                                                                        phi_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       /*--- We loop over all faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -1209,6 +1258,11 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(y_plus, EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(y_plus, EvaluationFlags::values);
+
         const auto coef_jump = C_u*0.5*(std::abs((phi_p.get_normal_vector(0)*phi_p.inverse_jacobian(0))[dim - 1]) +
                                         std::abs((phi_m.get_normal_vector(0)*phi_m.inverse_jacobian(0))[dim - 1]));
 
@@ -1218,15 +1272,13 @@ namespace NS_TRBDF2 {
 
           const auto& dx_p                 = phi_deltas_p.get_value(q);
           const auto& dx_m                 = phi_deltas_m.get_value(q);
-          const auto& point_vectorized_p   = phi_p.quadrature_point(q);
-          const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-          const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+          const auto& avg_visc_grad_u      = viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                              phi_p.get_symmetric_gradient(q) +
-                                             viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+                                             viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                              phi_m.get_symmetric_gradient(q);
-          const auto& avg_visc             = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
-                                                    viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
+          const auto& avg_visc             = 0.5 * (viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re) +
+                                                    viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re));
 
           const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
           const auto& avg_tensor_product_u = 0.5*(outer_product(phi_p.get_value(q), phi_extr_p.get_value(q)) +
@@ -1239,9 +1291,9 @@ namespace NS_TRBDF2 {
           phi_m.submit_value(-a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) -
                               a33*avg_tensor_product_u*n_plus - 0.5*a33*lambda*jump_u, q);
 
-          phi_p.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+          phi_p.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                  0.5*(outer_product(jump_u,n_plus) + outer_product(n_plus,jump_u)), q);
-          phi_m.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+          phi_m.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                  0.5*(outer_product(jump_u,n_plus) + outer_product(n_plus,jump_u)), q);
 
         }
@@ -1264,7 +1316,8 @@ namespace NS_TRBDF2 {
       /*--- We first start by declaring the suitable instances to read already available quantities. ---*/
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, false, 2);
 
       /*--- We loop over all faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -1275,6 +1328,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
@@ -1292,13 +1348,12 @@ namespace NS_TRBDF2 {
             const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
             const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-            const auto& point_vectorized     = phi.quadrature_point(q);
             const auto& dx                   = phi_deltas.get_value(q);
 
-            phi.submit_value(a22*viscosity.value(point_vectorized, grad_u_int, dx, Re) * (-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+            phi.submit_value(a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re) * (-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
                              a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
 
-            phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*
+            phi.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re)*
                                  (outer_product(u_int, n_plus) + outer_product(n_plus, u_int)), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
@@ -1326,13 +1381,12 @@ namespace NS_TRBDF2 {
               grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
             }
 
-            const auto& visc = viscosity.value(point_vectorized, grad_u_int, dx, Re);
+            const auto& visc = viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re);
 
-            phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus +
+            phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(phi_y_plus.get_value(q), grad_u_int_m, dx, Re)))*n_plus +
                              visc*coef_jump*(u_int - u_int_m)) + a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
                              a22*0.5*lambda*(u_int - u_int_m), q);
-            phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*
-                                 (outer_product(u_int - u_int_m, n_plus) + outer_product(n_plus, u_int - u_int_m)), q);
+            phi.submit_gradient(-theta_v*a22*visc*(outer_product(u_int - u_int_m, n_plus) + outer_product(n_plus, u_int - u_int_m)), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
         }
@@ -1342,7 +1396,8 @@ namespace NS_TRBDF2 {
       /*--- We first start by declaring the suitable instances to read already available quantities. ---*/
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_extr(data, true, 0);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, 2);
 
 
       /*--- We loop over all faces in the range ---*/
@@ -1354,6 +1409,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
@@ -1369,12 +1427,11 @@ namespace NS_TRBDF2 {
             const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
             const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
-            const auto& point_vectorized = phi.quadrature_point(q);
             const auto& dx               = phi_deltas.get_value(q);
 
-            phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
+            phi.submit_value(a33*viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                              a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
-            phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*
+            phi.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re)*
                                  (outer_product(u, n_plus) + outer_product(n_plus, u)), q);
 
           }
@@ -1402,13 +1459,12 @@ namespace NS_TRBDF2 {
               grad_u_m[0][0][v] = -grad_u_m[0][0][v];
               grad_u_m[0][1][v] = -grad_u_m[0][1][v];
             }
-            const auto& visc = viscosity.value(point_vectorized, grad_u, dx, Re);
+            const auto& visc = viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re);
 
-            phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus +
+            phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(phi_y_plus.get_value(q), grad_u_m, dx, Re)*grad_u_m))*n_plus +
                              visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
                              a33*0.5*lambda*(u - u_m), q);
-            phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*
-                                 (outer_product(u - u_m, n_plus) + outer_product(n_plus, u - u_m)), q);
+            phi.submit_gradient(-theta_v*a33*visc*(outer_product(u - u_m, n_plus) + outer_product(n_plus, u - u_m)), q);
           }
           phi.integrate_scatter(EvaluationFlags::values | EvaluationFlags::gradients, dst);
         }
@@ -1629,7 +1685,8 @@ namespace NS_TRBDF2 {
     if(TR_BDF2_stage == 1) {
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old_extr(data, 0);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       /*--- Build a vector of ones to be tested (here we will see the velocity as a whole vector, since
@@ -1647,6 +1704,9 @@ namespace NS_TRBDF2 {
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
+
         /*--- Loop over dofs ---*/
         for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
           for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
@@ -1662,10 +1722,9 @@ namespace NS_TRBDF2 {
             const auto& tensor_product_u_int = outer_product(u_int, u_n_gamma_ov_2);
 
             const auto& dx                   = phi_deltas.get_value(q);
-            const auto& point_vectorized     = phi.quadrature_point(q);
 
             phi.submit_value(1.0/(gamma*dt)*u_int, q);
-            phi.submit_gradient(-a22*tensor_product_u_int + a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*grad_u_int, q);
+            phi.submit_gradient(-a22*tensor_product_u_int + a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re)*grad_u_int, q);
           }
           phi.integrate(true, true);
           diagonal[i] = phi.get_dof_value(i);
@@ -1678,7 +1737,8 @@ namespace NS_TRBDF2 {
     else {
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_int_extr(data, 0);
-      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2);
+      FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
+                                                                   phi_y_plus(data, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       Tensor<1, dim, VectorizedArray<Number>> tmp;
@@ -1693,6 +1753,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(cell);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
+
+        phi_y_plus.reinit(cell);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
 
         /*--- Loop over dofs ---*/
         for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
@@ -1709,10 +1772,9 @@ namespace NS_TRBDF2 {
             const auto& tensor_product_u_curr    = outer_product(u_curr, u_n1_int);
 
             const auto& dx                       = phi_deltas.get_value(q);
-            const auto& point_vectorized         = phi.quadrature_point(q);
 
             phi.submit_value(1.0/((1.0 - gamma)*dt)*u_curr, q);
-            phi.submit_gradient(-a33*tensor_product_u_curr + a33*viscosity.value(point_vectorized, grad_u_curr, dx, Re)*grad_u_curr, q);
+            phi.submit_gradient(-a33*tensor_product_u_curr + a33*viscosity.value(phi_y_plus.get_value(q), grad_u_curr, dx, Re)*grad_u_curr, q);
           }
           phi.integrate(true, true);
           diagonal[i] = phi.get_dof_value(i);
@@ -1739,7 +1801,9 @@ namespace NS_TRBDF2 {
                                                                        phi_old_extr_p(data, true, 0),
                                                                        phi_old_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       AssertDimension(phi_p.dofs_per_component, phi_m.dofs_per_component); /*--- We just assert for safety that dimension match,
                                                                                 in the sense that we have selected the proper
@@ -1765,6 +1829,11 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(y_plus, EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(y_plus, EvaluationFlags::values);
+
         const auto coef_jump = C_u*0.5*(std::abs((phi_p.get_normal_vector(0)*phi_p.inverse_jacobian(0))[dim - 1]) +
                                         std::abs((phi_m.get_normal_vector(0)*phi_m.inverse_jacobian(0))[dim - 1]));
 
@@ -1785,15 +1854,13 @@ namespace NS_TRBDF2 {
 
             const auto& dx_p                     = phi_deltas_p.get_value(q);
             const auto& dx_m                     = phi_deltas_m.get_value(q);
-            const auto& point_vectorized_p       = phi_p.quadrature_point(q);
-            const auto& point_vectorized_m       = phi_m.quadrature_point(q);
 
-            const auto& avg_visc_grad_u_int      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+            const auto& avg_visc_grad_u_int      = viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                                    phi_p.get_symmetric_gradient(q) +
-                                                   viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+                                                   viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                                    phi_m.get_symmetric_gradient(q);
-            const auto& avg_visc                 = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
-                                                          viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
+            const auto& avg_visc                 = 0.5 * (viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re) +
+                                                          viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re));
 
             const auto& jump_u_int               = phi_p.get_value(q) - phi_m.get_value(q);
             const auto& avg_tensor_product_u_int = 0.5*(outer_product(phi_p.get_value(q), phi_old_extr_p.get_value(q)) +
@@ -1807,9 +1874,9 @@ namespace NS_TRBDF2 {
           phi_m.submit_value(-a22*(-avg_visc_grad_u_int*n_plus +  avg_visc * coef_jump*jump_u_int) -
                               a22*avg_tensor_product_u_int*n_plus - 0.5*a22*lambda*jump_u_int, q);
 
-          phi_p.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+          phi_p.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                  0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
-          phi_m.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+          phi_m.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                  0.5*(outer_product(jump_u_int,n_plus) + outer_product(n_plus,jump_u_int)), q);
           }
           phi_p.integrate(true, true);
@@ -1831,7 +1898,9 @@ namespace NS_TRBDF2 {
                                                                        phi_extr_p(data, true, 0),
                                                                        phi_extr_m(data, false, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas_p(data, true, 2),
-                                                                       phi_deltas_m(data, false, 2);
+                                                                       phi_deltas_m(data, false, 2),
+                                                                       phi_y_plus_p(data, true, 2),
+                                                                       phi_y_plus_m(data, false, 2);
 
       AssertDimension(phi_p.dofs_per_component, phi_m.dofs_per_component);
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal_p(phi_p.dofs_per_component),
@@ -1854,6 +1923,11 @@ namespace NS_TRBDF2 {
         phi_deltas_m.reinit(face);
         phi_deltas_m.gather_evaluate(deltas, EvaluationFlags::values);
 
+        phi_y_plus_p.reinit(face);
+        phi_y_plus_p.gather_evaluate(y_plus, EvaluationFlags::values);
+        phi_y_plus_m.reinit(face);
+        phi_y_plus_m.gather_evaluate(y_plus, EvaluationFlags::values);
+
         const auto coef_jump = C_u*0.5*(std::abs((phi_p.get_normal_vector(0)*phi_p.inverse_jacobian(0))[dim - 1]) +
                                         std::abs((phi_m.get_normal_vector(0)*phi_m.inverse_jacobian(0))[dim - 1]));
 
@@ -1874,15 +1948,13 @@ namespace NS_TRBDF2 {
 
             const auto& dx_p                 = phi_deltas_p.get_value(q);
             const auto& dx_m                 = phi_deltas_m.get_value(q);
-            const auto& point_vectorized_p   = phi_p.quadrature_point(q);
-            const auto& point_vectorized_m   = phi_m.quadrature_point(q);
 
-            const auto& avg_visc_grad_u      = viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+            const auto& avg_visc_grad_u      = viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                                phi_p.get_symmetric_gradient(q) +
-                                               viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+                                               viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                                phi_m.get_symmetric_gradient(q);
-            const auto& avg_visc = 0.5 * (viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re) +
-                                          viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re));
+            const auto& avg_visc = 0.5 * (viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re) +
+                                          viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re));
 
             const auto& jump_u               = phi_p.get_value(q) - phi_m.get_value(q);
             const auto& avg_tensor_product_u = 0.5*(outer_product(phi_p.get_value(q), phi_extr_p.get_value(q)) +
@@ -1895,9 +1967,9 @@ namespace NS_TRBDF2 {
             phi_m.submit_value(-a33*(-avg_visc_grad_u*n_plus + avg_visc*coef_jump*jump_u) -
                                 a33*avg_tensor_product_u*n_plus - 0.5*a33*lambda*jump_u, q);
 
-            phi_p.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized_p, phi_p.get_symmetric_gradient(q), dx_p, Re)*
+            phi_p.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus_p.get_value(q), phi_p.get_symmetric_gradient(q), dx_p, Re)*
                                    0.5*(outer_product(jump_u,n_plus) + outer_product(n_plus,jump_u)), q);
-            phi_m.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized_m, phi_m.get_symmetric_gradient(q), dx_m, Re)*
+            phi_m.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus_m.get_value(q), phi_m.get_symmetric_gradient(q), dx_m, Re)*
                                    0.5*(outer_product(jump_u,n_plus) + outer_product(n_plus,jump_u)), q);
           }
           phi_p.integrate(true, true);
@@ -1927,7 +1999,8 @@ namespace NS_TRBDF2 {
     if(TR_BDF2_stage == 1) {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, false, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       Tensor<1, dim, VectorizedArray<Number>> tmp;
@@ -1942,6 +2015,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
@@ -1964,13 +2040,12 @@ namespace NS_TRBDF2 {
               const auto& tensor_product_u_int = outer_product(phi.get_value(q), phi_old_extr.get_value(q));
               const auto& lambda               = std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
 
-              const auto& point_vectorized     = phi.quadrature_point(q);
               const auto& dx                   = phi_deltas.get_value(q);
 
-              phi.submit_value(a22*viscosity.value(point_vectorized, grad_u_int, dx, Re) * (-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
+              phi.submit_value(a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re) * (-grad_u_int*n_plus + 2.0*coef_jump*u_int) +
                                a22*coef_trasp*tensor_product_u_int*n_plus + a22*lambda*u_int, q);
 
-              phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*
+              phi.submit_gradient(-theta_v*a22*viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re)*
                                    (outer_product(u_int, n_plus)+ outer_product(n_plus, u_int)), q);
             }
             phi.integrate(true, true);
@@ -2011,12 +2086,12 @@ namespace NS_TRBDF2 {
                 grad_u_int_m[0][1][v] = -grad_u_int_m[0][1][v];
               }
 
-              const auto& visc = viscosity.value(point_vectorized, grad_u_int, dx, Re);
+              const auto& visc = viscosity.value(phi_y_plus.get_value(q), grad_u_int, dx, Re);
 
-              phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(point_vectorized, grad_u_int_m, dx, Re)))*n_plus +
+              phi.submit_value(a22*(-(0.5*(grad_u_int*visc + grad_u_int_m*viscosity.value(phi_y_plus.get_value(q), grad_u_int_m, dx, Re)))*n_plus +
                               visc*coef_jump*(u_int - u_int_m)) + a22*outer_product(0.5*(u_int + u_int_m), phi_old_extr.get_value(q))*n_plus +
                               a22*0.5*lambda*(u_int - u_int_m), q);
-              phi.submit_gradient(-theta_v*a22*viscosity.value(point_vectorized, grad_u_int, dx, Re)*
+              phi.submit_gradient(-theta_v*a22*visc*
                                    (outer_product(u_int - u_int_m, n_plus)+outer_product(n_plus, u_int - u_int_m)), q);
             }
             phi.integrate(true, true);
@@ -2031,7 +2106,8 @@ namespace NS_TRBDF2 {
     else {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_extr(data, true, 0);
-      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2);
+      FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
+                                                                       phi_y_plus(data, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       Tensor<1, dim, VectorizedArray<Number>> tmp;
@@ -2046,6 +2122,9 @@ namespace NS_TRBDF2 {
 
         phi_deltas.reinit(face);
         phi_deltas.gather_evaluate(deltas, EvaluationFlags::values);
+
+        phi_y_plus.reinit(face);
+        phi_y_plus.gather_evaluate(y_plus, EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
@@ -2068,12 +2147,11 @@ namespace NS_TRBDF2 {
               const auto& tensor_product_u = outer_product(phi.get_value(q), phi_extr.get_value(q));
               const auto& lambda           = std::abs(scalar_product(phi_extr.get_value(q), n_plus));
 
-              const auto& point_vectorized = phi.quadrature_point(q);
               const auto& dx               = phi_deltas.get_value(q);
 
-              phi.submit_value(a33*viscosity.value(point_vectorized, grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
+              phi.submit_value(a33*viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re)*(-grad_u*n_plus + 2.0*coef_jump*u) +
                               a33*coef_trasp*tensor_product_u*n_plus + a33*lambda*u, q);
-              phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*
+              phi.submit_gradient(-theta_v*a33*viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re)*
                                    (outer_product(u, n_plus) + outer_product(n_plus, u)), q);
             }
             phi.integrate(true, true);
@@ -2113,13 +2191,12 @@ namespace NS_TRBDF2 {
                 grad_u_m[0][1][v] = -grad_u_m[0][1][v];
               }
 
-              const auto& visc = viscosity.value(point_vectorized, grad_u, dx, Re);
+              const auto& visc = viscosity.value(phi_y_plus.get_value(q), grad_u, dx, Re);
 
-              phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(point_vectorized, grad_u_m, dx, Re)*grad_u_m))*n_plus +
+              phi.submit_value(a33*(-(0.5*(visc*grad_u + viscosity.value(phi_y_plus.get_value(q), grad_u_m, dx, Re)*grad_u_m))*n_plus +
                               visc*coef_jump*(u - u_m)) + a33*outer_product(0.5*(u + u_m), phi_extr.get_value(q))*n_plus +
                               a33*0.5*lambda*(u - u_m), q);
-              phi.submit_gradient(-theta_v*a33*viscosity.value(point_vectorized, grad_u, dx, Re)*
-                                   (outer_product(u - u_m, n_plus) + outer_product(n_plus, u - u_m)), q);
+              phi.submit_gradient(-theta_v*a33*visc*(outer_product(u - u_m, n_plus) + outer_product(n_plus, u - u_m)), q);
             }
             phi.integrate(true, true);
             diagonal[i] = phi.get_dof_value(i);
@@ -2400,6 +2477,7 @@ namespace NS_TRBDF2 {
     LinearAlgebra::distributed::Vector<double> deltas;
 
     LinearAlgebra::distributed::Vector<double> artificial_force;
+    LinearAlgebra::distributed::Vector<double> y_plus;
 
     /*--- Variables for statistics ---*/
     std::vector<Point<dim>> cylinder_points;
@@ -2481,6 +2559,8 @@ namespace NS_TRBDF2 {
     void compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity);
 
     void compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel);
+
+    void compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length);
 
     /*--- Technical member to handle the various steps ---*/
     std::shared_ptr<MatrixFree<dim, double>> matrix_free_storage;
@@ -3200,6 +3280,8 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(rhs_p, 1);
 
     matrix_free_storage->initialize_dof_vector(deltas, 2);
+    matrix_free_storage->initialize_dof_vector(y_plus, 2);
+
 
     // initialize delta calculation
     for(const auto& cell: dof_handler_deltas.active_cell_iterators()) {
@@ -3372,12 +3454,12 @@ namespace NS_TRBDF2 {
           that this quantity is required in the bilinear forms and we can't use a vector of src like on the right-hand side,
           so it has to be available ---*/
     if(TR_BDF2_stage == 1) {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n, deltas, artificial_force});
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_extr, pres_n, deltas, artificial_force, y_plus});
       navier_stokes_matrix.set_u_extr(u_extr);
       u_star = u_extr;
     }
     else {
-      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr, deltas, artificial_force});
+      navier_stokes_matrix.vmult_rhs_velocity(rhs_u, {u_n, u_n_gamma, pres_int, u_extr, deltas, artificial_force, y_plus});
       navier_stokes_matrix.set_u_extr(u_extr);
       u_star = u_extr;
     }
@@ -3760,7 +3842,7 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::compute_pressure_avg_over_boundary(int n, double height, int n_points) {
     double avg_pres = 0.0;
-    for(int i = 0; i < cylinder_points.size(); i++) {
+    for(unsigned int i = 0; i < cylinder_points.size(); i++) {
       int count = 0;
       for(int j = 0; j < n_points; j++) {
         if(dim == 3)
@@ -3791,7 +3873,7 @@ namespace NS_TRBDF2 {
 
     Tensor<1, dim, double> normal_vector;
 
-    for(int i = 0; i < cylinder_points.size(); i++) {
+    for(unsigned int i = 0; i < cylinder_points.size(); i++) {
       if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned()) {
         std::vector<Tensor< 1, dim, double >> vel_grad;
@@ -3838,7 +3920,7 @@ namespace NS_TRBDF2 {
   // velocity average over time
   template<int dim>
   void NavierStokesProjection<dim>::compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity) {
-    for(int i = 0; i < points.size(); i++) {
+    for(unsigned int i = 0; i < points.size(); i++) {
       if(GridTools::find_active_cell_around_point(triangulation, points[i]) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, points[i])->is_locally_owned()) {
 
@@ -3963,6 +4045,59 @@ namespace NS_TRBDF2 {
 
     // interpolate force over domain
     VectorTools::interpolate(dof_handler_velocity, Functions::ConstantFunction<dim>(Vector<double>({force, 0.0})), artificial_force);
+  }
+
+
+  template <int dim>
+  void NavierStokesProjection<dim>::compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length) {
+    // get mesh of boundary
+    parallel::distributed::Triangulation<dim - 1, dim> boundary_triangulation(MPI_COMM_WORLD);
+    GridGenerator::extract_boundary_mesh(triangulation, boundary_triangulation, {1, 3});
+
+    for(const auto& cell : dof_handler_deltas.active_cell_iterators()) {
+      if(cell->is_locally_owned()) {
+        int idx = GridTools::find_closest_vertex(boundary_triangulation, cell->center());
+
+        auto boundary_point = boundary_triangulation.get_vertices()[idx];
+    
+        // calculate distance
+        double distance_y = boundary_point.distance(cell->center());
+
+        // calculate gradient of u of nearest boundary point
+        auto grad_u = VectorTools::point_gradient(dof_handler_velocity, vel, boundary_point);
+
+        Tensor<1, dim, double> normal_vector;
+
+        // calculate normal derivative of nearest boundary point
+        if(std::abs(boundary_point[1] - lower_boundary) < 1e-10)
+          normal_vector = Tensor<1, dim, double>({0.0, 1.0});
+        else if(std::abs(boundary_point[1] - upper_boundary) < 1e-10)
+          normal_vector = Tensor<1, dim, double>({0.0, -1.0});
+        else if(square_cylinder){
+          if(boundary_point[0] == center[0] - 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({-1, 0});
+          else if(boundary_point[1] == center[1] - 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0, -1});
+          else if(boundary_point[0] == center[0] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({1, 0});
+          else if(boundary_point[1] == center[1] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0, 1});
+          else
+            std::cout << "Error in compute boundary distance" << std::endl;
+        }
+        else{
+          normal_vector = Tensor< 1, dim, double >({2.*(boundary_point[0] - center[0]), 2.*(boundary_point[1] - center[1])});
+        }
+
+        std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
+        cell->get_dof_indices(dof_indices);
+        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
+          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * grad_u * normal_vector);
+        }
+      }
+    }
+
+    navier_stokes_matrix.set_y_plus(y_plus);
   }
 
   // @sect{ <code>NavierStokesProjection::refine_mesh</code>}
@@ -4272,7 +4407,7 @@ namespace NS_TRBDF2 {
     infile.open(filename);
     while (infile >> idx){
       infile >> val;
-      int it = std::find_if(points.begin(), points.end(), 
+      unsigned int it = std::find_if(points.begin(), points.end(), 
         [&](double p){ return std::abs(p - idx) < 1.0e-10; }) - points.begin();
 
       if(it != points.size()){
@@ -4377,6 +4512,9 @@ namespace NS_TRBDF2 {
       verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
       interpolate_velocity();
 
+      // compute y+
+      compute_y_plus(u_n, 0.0, height, center, 2.0 * radius);
+
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
       diffusion_step();
 
@@ -4405,6 +4543,9 @@ namespace NS_TRBDF2 {
 
       verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
       interpolate_velocity();
+
+      // compute y+
+      compute_y_plus(u_n_gamma, 0.0, height, center, 2.0 * radius);
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
       diffusion_step();
