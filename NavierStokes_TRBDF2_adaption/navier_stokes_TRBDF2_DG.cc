@@ -534,8 +534,10 @@ namespace NS_TRBDF2 {
           const auto& dx                 = phi_deltas.get_value(q);
           const auto& point_vectorized   = phi.quadrature_point(q);
 
-          phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
-                                                          test function ---*/
+          phi.submit_value(1.0/(gamma*dt)*u_n, q); 
+
+          // phi.submit_value(1.0/(gamma*dt)*u_n + phi_force.get_value(q), q); /*--- 'submit_value' contains quantites that we want to test against the
+          //                                                 test function ---*/
           phi.submit_gradient(-a21*viscosity.value(point_vectorized, grad_u_n, dx, Re)*grad_u_n +
                                a21*tensor_product_u_n + p_n_times_identity, q);
           /*--- 'submit_gradient' contains quantites that we want to test against the gradient of test function ---*/
@@ -1497,7 +1499,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1) {
+      if(boundary_id == 1|| (!no_slip && boundary_id == 3)) {
         phi.reinit(face);
         phi.gather_evaluate(src, true, true);
 
@@ -2979,28 +2981,28 @@ namespace NS_TRBDF2 {
                                               tria6(MPI_COMM_WORLD),
                                               tria7(MPI_COMM_WORLD);
 
-    GridGenerator::subdivided_hyper_rectangle(tria1, {30, 2},
+    GridGenerator::subdivided_hyper_rectangle(tria1, {15, 2},
                                               Point<dim>(0.0, 0.0),
                                               Point<dim>(30.0, 0.2));
-    GridGenerator::subdivided_hyper_rectangle(tria2, {30, 2},
-                                              Point<dim>(0.0, 19.8),
-                                              Point<dim>(30.0, 20.0));
-    GridGenerator::subdivided_hyper_rectangle(tria3, {30, 2},
+    GridGenerator::subdivided_hyper_rectangle(tria2, {15, 2},
+                                              Point<dim>(0.0, 9.8),
+                                              Point<dim>(15.0, 10.0));
+    GridGenerator::subdivided_hyper_rectangle(tria3, {15, 2},
                                               Point<dim>(0.0, 0.2),
-                                              Point<dim>(30.0, 0.6));
-    GridGenerator::subdivided_hyper_rectangle(tria4, {30, 2},
-                                              Point<dim>(0.0, 19.4),
-                                              Point<dim>(30.0, 19.8));
-    GridGenerator::subdivided_hyper_rectangle(tria5, {30, 1},
+                                              Point<dim>(15.0, 0.6));
+    GridGenerator::subdivided_hyper_rectangle(tria4, {15, 2},
+                                              Point<dim>(0.0, 9.4),
+                                              Point<dim>(15.0, 9.8));
+    GridGenerator::subdivided_hyper_rectangle(tria5, {15, 1},
                                               Point<dim>(0.0, 0.6),
-                                              Point<dim>(30.0, 1.0));
-    GridGenerator::subdivided_hyper_rectangle(tria6, {30, 1},
-                                              Point<dim>(0.0, 19.0),
-                                              Point<dim>(30.0, 19.4));
+                                              Point<dim>(15.0, 1.0));
+    GridGenerator::subdivided_hyper_rectangle(tria6, {15, 1},
+                                              Point<dim>(0.0, 9.0),
+                                              Point<dim>(15.0, 9.4));
 
-    GridGenerator::subdivided_hyper_rectangle(tria7, {30, 18},
+    GridGenerator::subdivided_hyper_rectangle(tria7, {15, 8},
                                               Point<dim>(0.0, 1.0),
-                                              Point<dim>(30.0, 19.0));
+                                              Point<dim>(15.0, 9.0));
 
     GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7},
                                         triangulation, 1e-8, true);
@@ -3015,12 +3017,12 @@ namespace NS_TRBDF2 {
         if(std::abs(center[0] - 0.0) < 1e-10)
           face->set_boundary_id(0);
         // right side
-        else if(std::abs(center[0] - 30.0) < 1e-10)
+        else if(std::abs(center[0] - 15.0) < 1e-10)
           face->set_boundary_id(1);
         // sides of channel
         else {
           Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
-                std::abs(center[1] - 20.0) < 1.0e-10,
+                std::abs(center[1] - 10.0) < 1.0e-10,
                 ExcInternalError());
           face->set_boundary_id(3);
         }
@@ -3960,15 +3962,7 @@ namespace NS_TRBDF2 {
     double force = 0.1 * (1.0 - VectorTools::compute_mean_value(MappingQ1<dim>(), dof_handler_velocity, quadrature_velocity, vel, 0));
 
     // interpolate force over domain
-    for(const auto& cell: dof_handler_velocity.active_cell_iterators()) {
-      if(cell->is_locally_owned()) {
-        std::vector<types::global_dof_index> dof_indices(fe_velocity.dofs_per_cell);
-        cell->get_dof_indices(dof_indices);
-        for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          artificial_force(dof_indices[idx]) = force;
-        }
-      }
-    }
+    VectorTools::interpolate(dof_handler_velocity, Functions::ConstantFunction<dim>(Vector<double>({force, 0.0})), artificial_force);
   }
 
   // @sect{ <code>NavierStokesProjection::refine_mesh</code>}
@@ -4549,3 +4543,4 @@ int main(int argc, char *argv[]) {
   }
 
 }
+
