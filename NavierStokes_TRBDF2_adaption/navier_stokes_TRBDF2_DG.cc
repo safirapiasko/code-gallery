@@ -791,7 +791,7 @@ namespace NS_TRBDF2 {
                                                                        phi_old_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, false, 2);
+                                                                       phi_y_plus(data, true, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -860,7 +860,7 @@ namespace NS_TRBDF2 {
                                                                        phi_int_extr(data, true, 0);
       FEFaceEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, true, 1);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, 2);
+                                                                       phi_y_plus(data, true, 2);
 
       /*--- We loop over the faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++ face) {
@@ -1317,7 +1317,7 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, false, 2);
+                                                                       phi_y_plus(data, true, 2);
 
       /*--- We loop over all faces in the range ---*/
       for(unsigned int face = face_range.first; face < face_range.second; ++face) {
@@ -1397,7 +1397,7 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_extr(data, true, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, 2);
+                                                                       phi_y_plus(data, true, 2);
 
 
       /*--- We loop over all faces in the range ---*/
@@ -2000,7 +2000,7 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_old_extr(data, true, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, false, 2);
+                                                                       phi_y_plus(data, true, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       Tensor<1, dim, VectorizedArray<Number>> tmp;
@@ -2107,7 +2107,7 @@ namespace NS_TRBDF2 {
       FEFaceEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, true, 0),
                                                                        phi_extr(data, true, 0);
       FEFaceEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, true, 2),
-                                                                       phi_y_plus(data, 2);
+                                                                       phi_y_plus(data, true, 2);
 
       AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
       Tensor<1, dim, VectorizedArray<Number>> tmp;
@@ -2442,6 +2442,11 @@ namespace NS_TRBDF2 {
 
     parallel::distributed::Triangulation<dim> triangulation;
 
+    /*--- parameters to find nearest boundary vertex (for calculation of y+) ---*/
+    Triangulation<dim> serial_triangulation;
+    std::map<typename Triangulation<dim>::active_cell_iterator, int> cell_to_nearest_boundary_point;
+    std::vector<std::vector<int>> cell_to_nearest_boundary_point_all;
+
     /*--- Finite Element spaces ---*/
     FESystem<dim> fe_velocity;
     FESystem<dim> fe_pressure;
@@ -2475,9 +2480,9 @@ namespace NS_TRBDF2 {
     LinearAlgebra::distributed::Vector<double> grad_pres_int;
 
     LinearAlgebra::distributed::Vector<double> deltas;
+    LinearAlgebra::distributed::Vector<double> y_plus;
 
     LinearAlgebra::distributed::Vector<double> artificial_force;
-    LinearAlgebra::distributed::Vector<double> y_plus;
 
     /*--- Variables for statistics ---*/
     std::vector<Point<dim>> cylinder_points;
@@ -2546,9 +2551,11 @@ namespace NS_TRBDF2 {
 
     void initialize_points_around_cylinder(const unsigned int n_points, Point<dim> center, double radius);
 
-    void initialize_points_around_square_cylinder(const unsigned int n_points, Point<dim> start, double dx);    
+    void initialize_points_around_square_cylinder(const unsigned int n_points, Point<dim> start, double dx);
 
     std::vector<Point<dim>> initialize_profile_points(double angle, double spacing, Point<dim> start_point,  Point<dim> end_point);
+
+    void initialize_nearest_boundary_point_mapping();
 
     void compute_pressure_avg_over_boundary(int n, double height = 0.0, int n_points = 1);
 
@@ -2945,7 +2952,7 @@ namespace NS_TRBDF2 {
                                               Point<dim>(9.5, 10.5));
     GridGenerator::subdivided_hyper_rectangle(tria3, {39, 2},
                                               Point<dim>(10.5, 9.5),
-                                              Point<dim>(30.0, 10.5));                                          
+                                              Point<dim>(30.0, 10.5));
     GridGenerator::subdivided_hyper_rectangle(tria4, {60, 19},
                                               Point<dim>(0.0, 10.5),
                                               Point<dim>(30.0, 20.0));
@@ -2964,7 +2971,7 @@ namespace NS_TRBDF2 {
         else if(std::abs(center[0] - 30.0) < 1e-10)
           face->set_boundary_id(1);
         // cylinder boundary
-        else if(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 && 
+        else if(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 &&
                   center[1] < 10.5 + 1e-10 && center[1] > 9.5 - 1e-10)
           face->set_boundary_id(2);
         // sides of channel
@@ -2976,7 +2983,7 @@ namespace NS_TRBDF2 {
         }
       }
     }
-    
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -3006,7 +3013,7 @@ namespace NS_TRBDF2 {
                                               Point<dim>(9.5, 10.5, numbers::PI));
     GridGenerator::subdivided_hyper_rectangle(tria3, {39, 2, 3},
                                               Point<dim>(10.5, 9.5, 0.0),
-                                              Point<dim>(30.0, 10.5, numbers::PI));                                          
+                                              Point<dim>(30.0, 10.5, numbers::PI));
     GridGenerator::subdivided_hyper_rectangle(tria4, {60, 19, 3},
                                               Point<dim>(0.0, 10.5, 0.0),
                                               Point<dim>(30.0, 20.0, numbers::PI));
@@ -3036,7 +3043,7 @@ namespace NS_TRBDF2 {
         }
       }
     }
-    
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -3052,7 +3059,9 @@ namespace NS_TRBDF2 {
     TimerOutput::Scope t(time_table, "Create triangulation");
 
     triangulation.clear();
+    serial_triangulation.clear();
 
+    /*--- parallel distributed triangulation ---*/
     parallel::distributed::Triangulation<dim> tria1(MPI_COMM_WORLD),
                                               tria2(MPI_COMM_WORLD),
                                               tria3(MPI_COMM_WORLD),
@@ -3086,9 +3095,8 @@ namespace NS_TRBDF2 {
 
     GridGenerator::merge_triangulations({&tria1, &tria2, &tria3, &tria4, &tria5, &tria6, &tria7},
                                         triangulation, 1e-8, true);
-
-
-    /*--- Set boundary id ---*/
+    
+        /*--- Set boundary id ---*/
     for(const auto& face : triangulation.active_face_iterators()) {
       if(face->at_boundary()) {
         const Point<dim> center = face->center();
@@ -3113,13 +3121,76 @@ namespace NS_TRBDF2 {
     GridTools::collect_periodic_faces(triangulation, 0, 1, 0, periodic_faces);
     triangulation.add_periodicity(periodic_faces);
 
+    /*--- parallel distributed triangulation ---*/
+    Triangulation<dim>  stria1,
+                        stria2,
+                        stria3,
+                        stria4,
+                        stria5,
+                        stria6,
+                        stria7;
+
+    GridGenerator::subdivided_hyper_rectangle(stria1, {15, 2},
+                                              Point<dim>(0.0, 0.0),
+                                              Point<dim>(15.0, 0.2));
+    GridGenerator::subdivided_hyper_rectangle(stria2, {15, 2},
+                                              Point<dim>(0.0, 9.8),
+                                              Point<dim>(15.0, 10.0));
+    GridGenerator::subdivided_hyper_rectangle(stria3, {15, 2},
+                                              Point<dim>(0.0, 0.2),
+                                              Point<dim>(15.0, 0.6));
+    GridGenerator::subdivided_hyper_rectangle(stria4, {15, 2},
+                                              Point<dim>(0.0, 9.4),
+                                              Point<dim>(15.0, 9.8));
+    GridGenerator::subdivided_hyper_rectangle(stria5, {15, 1},
+                                              Point<dim>(0.0, 0.6),
+                                              Point<dim>(15.0, 1.0));
+    GridGenerator::subdivided_hyper_rectangle(stria6, {15, 1},
+                                              Point<dim>(0.0, 9.0),
+                                              Point<dim>(15.0, 9.4));
+
+    GridGenerator::subdivided_hyper_rectangle(stria7, {15, 8},
+                                              Point<dim>(0.0, 1.0),
+                                              Point<dim>(15.0, 9.0));
+
+    GridGenerator::merge_triangulations({&stria1, &stria2, &stria3, &stria4, &stria5, &stria6, &stria7},
+                                        serial_triangulation, 1e-8, true);
+
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : serial_triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 15.0) < 1e-10)
+          face->set_boundary_id(1);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 10.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
+
+    std::vector<GridTools::PeriodicFacePair<typename Triangulation<dim>::cell_iterator>> speriodic_faces;
+    GridTools::collect_periodic_faces(serial_triangulation, 0, 1, 0, speriodic_faces);
+    serial_triangulation.add_periodicity(speriodic_faces);
+
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+      serial_triangulation.refine_global(n_refines);
     }
     else {
       pcout << "Number of refines = " << n_refines << std::endl;
       triangulation.refine_global(n_refines);
+      serial_triangulation.refine_global(n_refines);
     }
   }
 
@@ -3838,6 +3909,33 @@ namespace NS_TRBDF2 {
     return profile_points;
   }
 
+  template<int dim>
+  void NavierStokesProjection<dim>::initialize_nearest_boundary_point_mapping(){
+    /*--- Assemble marked vertices of serial triangulation ---*/
+    std::vector<bool> global_boundary_vertices(serial_triangulation.n_vertices(), false);
+    for (const auto &face : serial_triangulation.active_face_iterators()){
+      if(face->at_boundary() && (face->boundary_id() == 3 || face->boundary_id() == 2)){
+        for(unsigned int i = 0; i < face->n_vertices(); i++){
+          global_boundary_vertices[face->vertex_index(i)] = true;
+        }
+      }
+    }
+
+    /*--- map each cell to nearest boundary point ---*/
+    std::vector<int> boundary_point_indices;
+    for(const auto& cell : dof_handler_deltas.active_cell_iterators()) {
+      if(cell->is_locally_owned()) {
+        int idx = GridTools::find_closest_vertex(serial_triangulation, cell->center(), global_boundary_vertices);
+
+        cell_to_nearest_boundary_point[cell] = idx;
+        boundary_point_indices.push_back(idx);
+      }
+    }
+
+    /*--- Share the map to all other nodes ---*/
+    cell_to_nearest_boundary_point_all = Utilities::MPI::all_gather(MPI_COMM_WORLD, boundary_point_indices);
+  }
+
   // pressure average over time
   template<int dim>
   void NavierStokesProjection<dim>::compute_pressure_avg_over_boundary(int n, double height, int n_points) {
@@ -3853,8 +3951,6 @@ namespace NS_TRBDF2 {
           count++;
         }
       }
-      std::cout << Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) << ": " << count << " of " << n_points << std::endl;
-
       if(GridTools::find_active_cell_around_point(triangulation, cylinder_points[i]) != triangulation.end() &&
           GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned())  {
         if(n > 1) {
@@ -3878,7 +3974,7 @@ namespace NS_TRBDF2 {
          GridTools::find_active_cell_around_point(triangulation, cylinder_points[i])->is_locally_owned()) {
         std::vector<Tensor< 1, dim, double >> vel_grad;
         VectorTools::point_gradient(dof_handler_velocity, u_n, cylinder_points[i], vel_grad);
-        
+
         if(square_cylinder){
           if(cylinder_points[i][0] == center[0] - 0.5*object_length)
             normal_vector = Tensor<1, dim, double>({-1, 0});
@@ -4037,7 +4133,7 @@ namespace NS_TRBDF2 {
       output_drag << drag << std::endl;
     }
   }
-  
+
   template <int dim>
   void NavierStokesProjection<dim>::compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel) {
     // calculate uniform artificial force
@@ -4050,30 +4146,49 @@ namespace NS_TRBDF2 {
 
   template <int dim>
   void NavierStokesProjection<dim>::compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length) {
-    // get mesh of boundary
-    parallel::distributed::Triangulation<dim - 1, dim> boundary_triangulation(MPI_COMM_WORLD);
-    GridGenerator::extract_boundary_mesh(triangulation, boundary_triangulation, {1, 3});
+    /*--- calculate gradient of u of all owned boundary points ---*/
+    std::vector<std::map<int, std::vector<Tensor< 1, dim, double>>>> boundary_point_to_grad_u_all;
+    for(unsigned int i = 0; i < cell_to_nearest_boundary_point_all.size(); i++){
+      std::map<int, std::vector<Tensor< 1, dim, double>>> boundary_point_to_grad_u;
+      for(auto & idx : cell_to_nearest_boundary_point_all[i]){
+        auto point = serial_triangulation.get_vertices()[idx];
+        if(GridTools::find_active_cell_around_point(triangulation, point) != triangulation.end() &&
+          GridTools::find_active_cell_around_point(triangulation, point)->is_locally_owned()){
+            std::vector<Tensor< 1, dim, double>> grad_u(dim);
+            VectorTools::point_gradient(dof_handler_velocity, vel, point, grad_u);
+            boundary_point_to_grad_u[idx] = grad_u;
+        }
+      }
 
+      boundary_point_to_grad_u_all.push_back(boundary_point_to_grad_u);
+    }
+
+    /*--- distribute all the gradients of u back to the processes which need them --*/
+    std::vector<std::vector<std::map<int, std::vector<Tensor< 1, dim, double>>>>> boundary_point_to_grad_u_all_rec;
+    for(int i = 0; i < Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD); i++){
+      boundary_point_to_grad_u_all_rec.push_back(Utilities::MPI::gather(MPI_COMM_WORLD, boundary_point_to_grad_u_all[i], i));
+    }
+
+    std::map<int, std::vector<Tensor< 1, dim, double>>> boundary_point_to_grad_u;
+    for(auto & maps : boundary_point_to_grad_u_all_rec[Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)]){
+      boundary_point_to_grad_u.insert(maps.begin(), maps.end());
+    }
+
+    /*--- calculate y plus for each owned cell ---*/
     for(const auto& cell : dof_handler_deltas.active_cell_iterators()) {
       if(cell->is_locally_owned()) {
-        int idx = GridTools::find_closest_vertex(boundary_triangulation, cell->center());
-
-        auto boundary_point = boundary_triangulation.get_vertices()[idx];
-    
         // calculate distance
+
+        auto boundary_point = serial_triangulation.get_vertices()[cell_to_nearest_boundary_point[cell]];
         double distance_y = boundary_point.distance(cell->center());
 
-        // calculate gradient of u of nearest boundary point
-        auto grad_u = VectorTools::point_gradient(dof_handler_velocity, vel, boundary_point);
-
-        Tensor<1, dim, double> normal_vector;
-
         // calculate normal derivative of nearest boundary point
-        if(std::abs(boundary_point[1] - lower_boundary) < 1e-10)
+        Tensor<1, dim, double> normal_vector;
+        if(std::abs(boundary_point[1] - lower_boundary) < 1e-10) // south wall
           normal_vector = Tensor<1, dim, double>({0.0, 1.0});
-        else if(std::abs(boundary_point[1] - upper_boundary) < 1e-10)
+        else if(std::abs(boundary_point[1] - upper_boundary) < 1e-10) // north wall
           normal_vector = Tensor<1, dim, double>({0.0, -1.0});
-        else if(square_cylinder){
+        else if(square_cylinder){ // square obstacle
           if(boundary_point[0] == center[0] - 0.5*object_length)
             normal_vector = Tensor<1, dim, double>({-1, 0});
           else if(boundary_point[1] == center[1] - 0.5*object_length)
@@ -4085,18 +4200,28 @@ namespace NS_TRBDF2 {
           else
             std::cout << "Error in compute boundary distance" << std::endl;
         }
-        else{
+        else{ // sphere obstacle
           normal_vector = Tensor< 1, dim, double >({2.*(boundary_point[0] - center[0]), 2.*(boundary_point[1] - center[1])});
         }
 
+        // get grad_u in the normal direction of the boundary point
+        std::vector<Tensor< 1, dim, double>> grad_u = boundary_point_to_grad_u[cell_to_nearest_boundary_point[cell]];
+
+        std::vector<double> normal_grad_u;
+        for(auto& grad : grad_u){
+          normal_grad_u.push_back(scalar_product(grad, normal_vector));
+        }
+
+        // get dof indices
         std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
         cell->get_dof_indices(dof_indices);
+
+        // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * grad_u * normal_vector);
+          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * std::sqrt(std::inner_product(grad_u.begin(), grad_u.end(), grad_u.begin(), 0.0)));
         }
       }
     }
-
     navier_stokes_matrix.set_y_plus(y_plus);
   }
 
@@ -4387,7 +4512,7 @@ namespace NS_TRBDF2 {
     infile.open(filename);
     while (infile >> idx){
       infile >> val[0] >> val[1];
-      unsigned int it = std::find_if(points.begin(), points.end(), 
+      unsigned int it = std::find_if(points.begin(), points.end(),
         [&](Point<dim> p){ return std::abs(p[axis] - idx) < 1.0e-10; }) - points.begin();
 
       if(it != points.size()){
@@ -4407,7 +4532,7 @@ namespace NS_TRBDF2 {
     infile.open(filename);
     while (infile >> idx){
       infile >> val;
-      unsigned int it = std::find_if(points.begin(), points.end(), 
+      unsigned int it = std::find_if(points.begin(), points.end(),
         [&](double p){ return std::abs(p - idx) < 1.0e-10; }) - points.begin();
 
       if(it != points.size()){
@@ -4430,10 +4555,13 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
+    
+    initialize_nearest_boundary_point_mapping();
+
     Point<dim> center;
     double radius, length, height;
 
-    if(big_domain || square_cylinder){
+    if(big_domain || square_cylinder || empty){
       center =  Point<dim>(10.0, 10.0);
       radius = 0.5;
       height = 20.0;
@@ -4452,6 +4580,11 @@ namespace NS_TRBDF2 {
         initialize_points_around_cylinder(180, center, radius);
       }
     }
+    else {
+      // just temporary a smaller domain when empty
+      height = 10.0;
+      length = 15.0;    
+    }
 
     horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
     vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
@@ -4468,7 +4601,7 @@ namespace NS_TRBDF2 {
       read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
       read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
       read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
-      
+
       if(!empty){
         std::vector<double> degree_points;
         for(auto& point : cylinder_points) {
@@ -4476,7 +4609,7 @@ namespace NS_TRBDF2 {
                   std::atan2((point[1] - center[1]), (point[0] - center[0])) * 180.0 / numbers::PI :
                   (std::atan2((point[1] - center[1]), (point[0] - center[0])) + 2.0*numbers::PI) * 180.0 / numbers::PI);
         }
-        
+
         read_statistics(degree_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
         read_statistics(degree_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
       }
@@ -4684,4 +4817,3 @@ int main(int argc, char *argv[]) {
   }
 
 }
-
