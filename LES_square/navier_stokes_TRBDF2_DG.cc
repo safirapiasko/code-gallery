@@ -3869,12 +3869,17 @@ namespace NS_TRBDF2 {
             std::cout << "Error in compute boundary distance" << std::endl;
         }
 
+        // calculate tangential vector
+        auto tangential_vector = boundary_point[1] - lower_boundary > 0.5*(upper_boundary - lower_boundary) ? 
+                                  Tensor<1, dim, double>({normal_vector[1], -normal_vector[0]}) : 
+                                  Tensor<1, dim, double>({-normal_vector[1], normal_vector[0]});
+
         // get grad_u in the normal direction of the boundary point
         std::vector<Tensor< 1, dim, double>> grad_u = boundary_point_to_grad_u[cell_to_nearest_boundary_point[cell]];
 
-        std::vector<double> normal_grad_u;
-        for(auto& grad : grad_u){
-          normal_grad_u.push_back(scalar_product(grad, normal_vector));
+        Tensor<1, dim, double> normal_grad_u;
+        for(unsigned int idx; idx < grad_u.size(); idx++){
+          normal_grad_u[idx] = scalar_product(grad_u[idx], normal_vector);
         }
 
         // get dof indices
@@ -3883,7 +3888,7 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * std::sqrt(std::inner_product(grad_u.begin(), grad_u.end(), grad_u.begin(), 0.0)));
+          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * scalar_product(normal_grad_u, tangential_vector));
         }
       }
     }
