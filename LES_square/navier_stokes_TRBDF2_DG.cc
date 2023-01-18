@@ -42,6 +42,7 @@
 #include <fstream>
 #include <cmath>
 #include <iostream>
+#include <chrono>
 
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
@@ -2446,6 +2447,7 @@ namespace NS_TRBDF2 {
     Triangulation<dim> serial_triangulation;
     std::map<typename Triangulation<dim>::active_cell_iterator, int> cell_to_nearest_boundary_point;
     std::vector<std::vector<int>> cell_to_nearest_boundary_point_all;
+    std::vector<std::vector<bool>> process_owns_boundary_point_all;
 
     /*--- Finite Element spaces ---*/
     FESystem<dim> fe_velocity;
@@ -2481,6 +2483,7 @@ namespace NS_TRBDF2 {
 
     LinearAlgebra::distributed::Vector<double> deltas;
     LinearAlgebra::distributed::Vector<double> y_plus;
+    LinearAlgebra::distributed::Vector<double> boundary_distance;
 
     LinearAlgebra::distributed::Vector<double> artificial_force;
 
@@ -3053,6 +3056,7 @@ namespace NS_TRBDF2 {
 
     matrix_free_storage->initialize_dof_vector(deltas, 2);
     matrix_free_storage->initialize_dof_vector(y_plus, 2);
+    matrix_free_storage->initialize_dof_vector(boundary_distance, 2);
 
 
     // initialize delta calculation
@@ -3408,6 +3412,9 @@ namespace NS_TRBDF2 {
     pres_n.update_ghost_values();
     data_out.add_data_vector(dof_handler_pressure, pres_n, "p", {DataComponentInterpretation::component_is_scalar});
 
+    boundary_distance.update_ghost_values();
+    data_out.add_data_vector(dof_handler_deltas, boundary_distance, "d", {DataComponentInterpretation::component_is_scalar});
+
     std::vector<std::string> velocity_names_old(dim, "v_old");
     u_n_minus_1.update_ghost_values();
     data_out.add_data_vector(dof_handler_velocity, u_n_minus_1, velocity_names_old, component_interpretation_velocity);
@@ -3549,15 +3556,18 @@ namespace NS_TRBDF2 {
     double space = 2.0 * dx / (n_points - 1);
     Point<dim> p;
 
-    for(unsigned int i = 0; i < n_points; ++i){
-      if(i*space < 0.5 * dx){
+    for(unsigned int i = 0; i < 2*n_points-1; ++i){
+      if(i*space < dx){
         p = (dim == 2) ? Point<dim>(start[0], start[1] + i * space) : Point<dim>(start[0], start[1] + i * space, start[2]);
       }
-      else if(i*space < 1.5 * dx){
-        p = (dim == 2) ? Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx) : Point<dim>(start[0] + i * space - 0.5 * dx, start[1] + 0.5 * dx, start[2]);
+      else if(i*space < 2.0 * dx){
+        p = (dim == 2) ? Point<dim>(start[0] + i * space - dx, start[1] + dx) : Point<dim>(start[0] + i * space - dx, start[1] + dx, start[2]);
+      }
+      else if(i*space < 3.0 * dx){
+        p = (dim == 2) ? Point<dim>(start[0] + dx, start[1] + 3.0 * dx - i * space) : Point<dim>(start[0] + dx, start[1] + 3.0 * dx - i * space, start[2]);
       }
       else{
-        p = (dim == 2) ? Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space) : Point<dim>(start[0] + dx, start[1] + 1.5 * dx - i * space, start[2]);
+        p = (dim == 2) ? Point<dim>(start[0] + 4.0 * dx - i * space, start[1]) : Point<dim>(start[0] + 4.0 * dx - i * space, start[1], start[2]);
       }
       if(GridTools::find_active_cell_around_point(triangulation, p) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, p)->is_locally_owned()) {
@@ -3609,6 +3619,19 @@ namespace NS_TRBDF2 {
 
     /*--- Share the map to all other nodes ---*/
     cell_to_nearest_boundary_point_all = Utilities::MPI::all_gather(MPI_COMM_WORLD, boundary_point_indices);
+
+    /*--- check to which process the boundary point belong to ---*/
+    for(unsigned int i = 0; i < cell_to_nearest_boundary_point_all.size(); i++){
+      std::vector<bool> temp(cell_to_nearest_boundary_point_all[i].size(), false);
+      for(unsigned int j = 0; j < cell_to_nearest_boundary_point_all[i].size(); j++){
+        auto point = serial_triangulation.get_vertices()[cell_to_nearest_boundary_point_all[i][j]];
+        if(GridTools::find_active_cell_around_point(triangulation, point) != triangulation.end() &&
+            GridTools::find_active_cell_around_point(triangulation, point)->is_locally_owned()){
+          temp[j] = true;
+        }
+      }
+      process_owns_boundary_point_all.push_back(temp);
+    }
   }
 
   // pressure average over time
@@ -3645,7 +3668,7 @@ namespace NS_TRBDF2 {
     for(unsigned int i = 0; i < obstacle_points.size(); i++) {
       if(GridTools::find_active_cell_around_point(triangulation, obstacle_points[i]) != triangulation.end() &&
          GridTools::find_active_cell_around_point(triangulation, obstacle_points[i])->is_locally_owned()) {
-        std::vector<Tensor< 1, dim, double >> vel_grad;
+        std::vector<Tensor< 1, dim, double >> vel_grad(dim);
         VectorTools::point_gradient(dof_handler_velocity, u_n, obstacle_points[i], vel_grad);
 
         if(obstacle_points[i][0] == center[0] - 0.5*object_length)
@@ -3658,9 +3681,6 @@ namespace NS_TRBDF2 {
           normal_vector = Tensor<1, dim, double>({0, 1});
         else
           std::cout << "Error in compute stress average over boundary" << std::endl;
-
-        Tensor< 1, dim, double > normal_vector = Tensor< 1, dim, double >({2.*(obstacle_points[i][0] - center[0]), 2.*(obstacle_points[i][1] - center[1])});
-        normal_vector /= normal_vector.norm();
 
         Tensor< 1, dim, double > tangential_vector = Tensor< 1, dim, double >({normal_vector[1], - normal_vector[0]});
 
@@ -3818,13 +3838,12 @@ namespace NS_TRBDF2 {
     std::vector<std::map<int, std::vector<Tensor< 1, dim, double>>>> boundary_point_to_grad_u_all;
     for(unsigned int i = 0; i < cell_to_nearest_boundary_point_all.size(); i++){
       std::map<int, std::vector<Tensor< 1, dim, double>>> boundary_point_to_grad_u;
-      for(auto & idx : cell_to_nearest_boundary_point_all[i]){
-        auto point = serial_triangulation.get_vertices()[idx];
-        if(GridTools::find_active_cell_around_point(triangulation, point) != triangulation.end() &&
-          GridTools::find_active_cell_around_point(triangulation, point)->is_locally_owned()){
-            std::vector<Tensor< 1, dim, double>> grad_u(dim);
-            VectorTools::point_gradient(dof_handler_velocity, vel, point, grad_u);
-            boundary_point_to_grad_u[idx] = grad_u;
+      for(unsigned int j = 0; j < cell_to_nearest_boundary_point_all[i].size(); j++){
+        auto point = serial_triangulation.get_vertices()[cell_to_nearest_boundary_point_all[i][j]];
+        if(process_owns_boundary_point_all[i][j]){
+          std::vector<Tensor< 1, dim, double>> grad_u(dim);
+          VectorTools::point_gradient(dof_handler_velocity, vel, point, grad_u);
+          boundary_point_to_grad_u[cell_to_nearest_boundary_point_all[i][j]] = grad_u;
         }
       }
 
@@ -3870,15 +3889,13 @@ namespace NS_TRBDF2 {
         }
 
         // calculate tangential vector
-        auto tangential_vector = boundary_point[1] - lower_boundary > 0.5*(upper_boundary - lower_boundary) ? 
-                                  Tensor<1, dim, double>({normal_vector[1], -normal_vector[0]}) : 
-                                  Tensor<1, dim, double>({-normal_vector[1], normal_vector[0]});
+        auto tangential_vector = Tensor<1, dim, double>({normal_vector[1], -normal_vector[0]});
 
         // get grad_u in the normal direction of the boundary point
         std::vector<Tensor< 1, dim, double>> grad_u = boundary_point_to_grad_u[cell_to_nearest_boundary_point[cell]];
 
         Tensor<1, dim, double> normal_grad_u;
-        for(unsigned int idx; idx < grad_u.size(); idx++){
+        for(unsigned int idx = 0; idx < grad_u.size(); idx++){
           normal_grad_u[idx] = scalar_product(grad_u[idx], normal_vector);
         }
 
@@ -3888,7 +3905,8 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * scalar_product(normal_grad_u, tangential_vector));
+          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector)));
+          boundary_distance(dof_indices[idx]) = distance_y;
         }
       }
     }
@@ -4220,7 +4238,7 @@ namespace NS_TRBDF2 {
     height = 20.0;
     length = 30.0; 
 
-    initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1]), 2.0 * radius);
+    initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
     horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
     vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
     vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
@@ -4241,6 +4259,8 @@ namespace NS_TRBDF2 {
       read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
+      compute_y_plus(u_n, 0.0, height, center, 2.0 * radius);
+
       output_results(1);
 
       compute_pressure_avg_over_boundary(n);
@@ -4268,6 +4288,7 @@ namespace NS_TRBDF2 {
       interpolate_velocity();
 
       // compute y+
+      verbose_cout << "  Computing y+ stage 1" << std::endl;
       compute_y_plus(u_n, 0.0, height, center, 2.0 * radius);
 
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
@@ -4300,6 +4321,7 @@ namespace NS_TRBDF2 {
       interpolate_velocity();
 
       // compute y+
+      verbose_cout << "  Computing y+ stage 1" << std::endl;
       compute_y_plus(u_n_gamma, 0.0, height, center, 2.0 * radius);
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
