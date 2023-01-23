@@ -23,6 +23,7 @@
 #include <deal.II/grid/grid_refinement.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
+#include <deal.II/grid/grid_in.h>
 #include <deal.II/distributed/grid_refinement.h>
 
 #include <deal.II/dofs/dof_handler.h>
@@ -2511,6 +2512,8 @@ namespace NS_TRBDF2 {
                    << std::endl
                    << " The permitted range is (0," << arg2 << "]");
 
+    void import_triangulation(const unsigned int n_refines, std::string filename);
+
     void create_triangulation_2D(const unsigned int n_refines);
 
     void create_triangulation_3D(const unsigned int n_refines);
@@ -2690,17 +2693,102 @@ namespace NS_TRBDF2 {
       AssertThrow(!((dt <= 0.0) || (dt > 0.5*T)), ExcInvalidTimeStep(dt, 0.5*T));
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
-      if(dim == 2){
-        create_triangulation_2D(n_refines);
-      }
-      else if(dim == 3){
-        create_triangulation_3D(n_refines);
-      }
 
+      std::cout << " Start importing triangulation" << std::endl;
+      import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
+      std::cout << " End importing triangulation" << std::endl;
+      
+      // if(dim == 2){
+      //   create_triangulation_2D(n_refines);
+      // }
+      // else if(dim == 3){
+      //   create_triangulation_3D(n_refines);
+      // }
+
+      std::cout << " Setup dofs" << std::endl;
       setup_dofs();
+      std::cout << " initialize" << std::endl;
       initialize();
   }
 
+  template<int dim>
+  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename){
+    TimerOutput::Scope t(time_table, "Import triangulation");
+    std::cout << "import parallel triangulation" << std::endl;
+    triangulation.clear();
+    serial_triangulation.clear();
+
+    /*--- parallel distributed triangulation ---*/
+    GridIn<dim> gridin;
+    gridin.attach_triangulation(triangulation);
+    std::ifstream f(filename);
+    gridin.read_msh(f);
+
+    /*--- Set boundary IDs ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 &&
+                  center[1] < 10.5 + 1e-10 && center[1] > 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
+
+    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
+
+    std::cout << "import serial triangulation" << std::endl;
+    /*--- single triangulation ---*/
+    GridIn<dim> sgridin;
+    sgridin.attach_triangulation(serial_triangulation);
+    std::ifstream sf(filename);
+    sgridin.read_msh(sf);
+
+    /*--- Set boundary IDs ---*/
+    for(const auto& face : serial_triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - 0.0) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - 30.0) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < 10.5 + 1e-10 && center[0] > 9.5 - 1e-10 &&
+                  center[1] < 10.5 + 1e-10 && center[1] > 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - 0.00) < 1.0e-10 ||
+                std::abs(center[1] - 20.0) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
+    serial_triangulation.refine_global(n_refines);
+  }
 
   // The method that creates the triangulation and refines it the needed number
   // of times.
@@ -4233,11 +4321,19 @@ namespace NS_TRBDF2 {
     Point<dim> center;
     double radius, length, height;
 
-    center =  Point<dim>(10.0, 10.0);
+    // center =  Point<dim>(10.0, 10.0);
+    // radius = 0.5;
+    // height = 20.0;
+    // length = 30.0; 
+
+    center =  Point<dim>(0.0, 0.0);
     radius = 0.5;
     height = 20.0;
     length = 30.0; 
+    double x_start = -10.0;
+    double y_start = -10.0;
 
+    verbose_cout << " initialize statistics points" << std::endl;
     initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
     horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
     vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
@@ -4259,7 +4355,7 @@ namespace NS_TRBDF2 {
       read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
-      compute_y_plus(u_n, 0.0, height, center, 2.0 * radius);
+      compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
 
       output_results(1);
 
@@ -4289,7 +4385,7 @@ namespace NS_TRBDF2 {
 
       // compute y+
       verbose_cout << "  Computing y+ stage 1" << std::endl;
-      compute_y_plus(u_n, 0.0, height, center, 2.0 * radius);
+      compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
 
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
       diffusion_step();
