@@ -24,6 +24,8 @@
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/distributed/grid_refinement.h>
+#include <deal.II/grid/grid_in.h>
+
 
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -2169,6 +2171,8 @@ namespace NS_TRBDF2 {
 
     void create_triangulation_with_square(const unsigned int n_refines);
 
+    void import_triangulation(const unsigned int n_refines, std::string filename);
+
     void setup_dofs();
 
     void initialize();
@@ -2309,15 +2313,47 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      if(square_cylinder)
+      import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
+
+      /*if(square_cylinder)
         create_triangulation_with_square(n_refines);
       else
-        create_triangulation(n_refines);
+        create_triangulation(n_refines);*/
       setup_dofs();
       initialize();
   }
 
+  template<int dim>
+  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename){
+    TimerOutput::Scope t(time_table, "Import triangulation");
+    std::cout << "import parallel triangulation" << std::endl;
+    triangulation.clear();
 
+    /*--- parallel distributed triangulation ---*/
+    GridIn<dim> gridin;
+    gridin.attach_triangulation(triangulation);
+    std::ifstream f(filename);
+    gridin.read_msh(f);
+
+    std::cout << "boundary ids" << std::endl;
+
+    /*--- Set boundary IDs ---*/
+    triangulation.set_all_manifold_ids_on_boundary(0, 0);
+    triangulation.set_all_manifold_ids_on_boundary(1, 1);
+    triangulation.set_all_manifold_ids_on_boundary(2, 2);
+    triangulation.set_all_manifold_ids_on_boundary(3, 3);
+
+    std::cout << " finished boundary ids" << std::endl;
+
+    /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
+    if(restart) {
+      triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
+    }
+    else {
+      pcout << "Number of refines = " << n_refines << std::endl;
+      triangulation.refine_global(n_refines);
+    }
+  }
   // The method that creates the triangulation and refines it the needed number
   // of times.
   //

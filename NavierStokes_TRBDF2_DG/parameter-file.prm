@@ -3,13 +3,13 @@ subsection Physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
   set final_time   = 600.0
-  set Reynolds     = 100.0
+  set Reynolds     = 1000.0
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt           = 1.5e-2
+  set dt           =1.0e-4
   set time_restart = 0.0
 end
 
@@ -32,12 +32,12 @@ subsection Data solve
   set tolerance_fixed_point = 1e-8
 end
 
-set saving directory = Re100_DNS_2ref_extr_no_penalty_square
+set saving directory = Re1000_DNS_2ref_square_imported_mesh
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 4000
+set output_interval = 1000
 
 #Finally we set the verbosity level
 set verbose = true
