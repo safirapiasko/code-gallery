@@ -2326,7 +2326,6 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename){
     TimerOutput::Scope t(time_table, "Import triangulation");
-    std::cout << "import parallel triangulation" << std::endl;
     triangulation.clear();
 
     /*--- parallel distributed triangulation ---*/
@@ -2335,15 +2334,11 @@ namespace NS_TRBDF2 {
     std::ifstream f(filename);
     gridin.read_msh(f);
 
-    std::cout << "boundary ids" << std::endl;
-
     /*--- Set boundary IDs ---*/
     triangulation.set_all_manifold_ids_on_boundary(0, 0);
     triangulation.set_all_manifold_ids_on_boundary(1, 1);
     triangulation.set_all_manifold_ids_on_boundary(2, 2);
     triangulation.set_all_manifold_ids_on_boundary(3, 3);
-
-    std::cout << " finished boundary ids" << std::endl;
 
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
