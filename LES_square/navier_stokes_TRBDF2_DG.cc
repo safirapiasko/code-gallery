@@ -2598,6 +2598,7 @@ namespace NS_TRBDF2 {
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
+    bool         import_mesh;
 
     std::string  saving_dir;
 
@@ -2664,6 +2665,7 @@ namespace NS_TRBDF2 {
     eps(data.eps),
     tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
+    import_mesh(data.import_mesh),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -2696,14 +2698,17 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
-      
-      // if(dim == 2){
-      //   create_triangulation_2D(n_refines);
-      // }
-      // else if(dim == 3){
-      //   create_triangulation_3D(n_refines);
-      // }
+      if(import_mesh){
+        import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
+      }
+      else{
+        if(dim == 2){
+          create_triangulation_2D(n_refines);
+        }
+        else if(dim == 3){
+          create_triangulation_3D(n_refines);
+        }
+      }
 
       setup_dofs();
       initialize();
@@ -3962,7 +3967,7 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector)));
+          y_plus(dof_indices[idx]) = std::max(250., distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector))));
           boundary_distance(dof_indices[idx]) = distance_y;
         }
       }
@@ -4288,19 +4293,20 @@ namespace NS_TRBDF2 {
     initialize_nearest_boundary_point_mapping();
 
     Point<dim> center;
-    double radius, length, height;
+    double radius, length, height, y_start;
 
-    // center =  Point<dim>(10.0, 10.0);
-    // radius = 0.5;
-    // height = 20.0;
-    // length = 30.0; 
-
-    center =  Point<dim>(0.0, 0.0);
     radius = 0.5;
     height = 20.0;
     length = 30.0; 
-    double x_start = -10.0;
-    double y_start = -10.0;
+
+    if(import_mesh) {
+      center =  Point<dim>(0.0, 0.0);
+      y_start = -10.0;
+    }
+    else {
+      center =  Point<dim>(10.0, 10.0);
+      y_start = 0.0;
+    }
 
     // verbose_cout << " initialize statistics points" << std::endl;
     // initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
@@ -4315,13 +4321,13 @@ namespace NS_TRBDF2 {
       n    = step_restart;
       time = time_restart;
 
-      read_statistics_velocity(horizontal_wake_points, 0, avg_horizontal_velocity, "./" + saving_dir + "/out_vel_hor.dat");
-      read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
-      read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
-      read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
+      // read_statistics_velocity(horizontal_wake_points, 0, avg_horizontal_velocity, "./" + saving_dir + "/out_vel_hor.dat");
+      // read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
+      // read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
+      // read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
 
-      read_statistics(obstacle_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
-      read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
+      // read_statistics(obstacle_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
+      // read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
       compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);

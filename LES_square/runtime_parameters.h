@@ -32,6 +32,7 @@ namespace RunTimeParameters {
     bool square_cylinder;             /*--- Flag to determine whether one wants
                                             to simulate the square cylinder or not ---*/
     bool empty;                       /*--- Flag to define an empty channel ---*/
+    bool import_mesh;
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -63,13 +64,14 @@ namespace RunTimeParameters {
                                 final_time(1.0),
                                 Reynolds(1.0),
                                 dt(5e-4),
-                                no_slip(false),
+                                no_slip(true),
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
                                 big_domain(false),
                                 square_cylinder(false),
                                 empty(false),
+                                import_mesh(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 tolerance_fixed_point(1e-6),
@@ -101,7 +103,7 @@ namespace RunTimeParameters {
                         Patterns::Double(0.0),
                         " The Smagorinsky coefficient. ");
       prm.declare_entry("no_slip",
-                        "false",
+                        "true",
                         Patterns::Bool(),
                         " This flag determines the boundary conditions of the domain. ");
     }
@@ -146,6 +148,10 @@ namespace RunTimeParameters {
                         "false",
                         Patterns::Bool(),
                         " This flag decides if we consider an empty channel. ");
+      prm.declare_entry("import_mesh",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if the imported mesh is used. ");
     }
     prm.leave_subsection();
 
@@ -245,6 +251,7 @@ namespace RunTimeParameters {
       big_domain          = prm.get_bool("big_domain");
       square_cylinder     = prm.get_bool("square_cylinder");
       empty               = prm.get_bool("empty");
+      import_mesh         = prm.get_bool("import_mesh");
     }
     prm.leave_subsection();
 

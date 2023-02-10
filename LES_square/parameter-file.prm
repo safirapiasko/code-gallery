@@ -2,8 +2,8 @@ subsection Physical data
   # In this subsection we declare the physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
-  set final_time   = 0.65
-  set Reynolds     = 3900.0
+  set final_time   = 100.0
+  set Reynolds     = 1000.0
   set Cs2          = 0.01
   set no_slip      = true
 end
@@ -11,7 +11,7 @@ end
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt = 1.0e-3
+  set dt = 2.5e-4
   set time_restart = 0.0
 end
 
@@ -22,6 +22,7 @@ subsection Space discretization
   set n_of_refines = 3
   set max_loc_refinements = 5
   set min_loc_refinements = 3
+  set import_mesh  = false
 end
 
 subsection Data solve
@@ -29,25 +30,25 @@ subsection Data solve
   # for the velocity.
   set max_iterations = 10000  # maximal number of iterations that linear solvers must make
   set eps = 1e-8  # stopping criterion
-  set step_restart = 4000 # Specify the number to search for the restart data
+  set step_restart = 60000 # Specify the number to search for the restart data
   set tolerance_fixed_point = 1e-8 # Set tolerance of fixed point
 end
 
-set saving directory = test
+set saving directory = Re1000_LES_3ref_extr_square_new_grid_restart
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 500
+set output_interval = 1000
 
 #Finally we set the verbosity level
 set verbose = true
 
 #Set whether we are in presence of a restart or not
-set restart = false
+set restart = true
 
 #Set if the restart is done just specifying an initialization
-set as_initial_conditions = false
+set as_initial_conditions = true
 
 #Set if you want to linearly modify the Reynolds number
 set modify_Reynolds = false
