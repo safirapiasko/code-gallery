@@ -3469,6 +3469,9 @@ namespace NS_TRBDF2 {
     boundary_distance.update_ghost_values();
     data_out.add_data_vector(dof_handler_deltas, boundary_distance, "d", {DataComponentInterpretation::component_is_scalar});
 
+    y_plus.update_ghost_values();
+    data_out.add_data_vector(dof_handler_yplus, y_plus, "y_plus", {DataComponentInterpretation::component_is_scalar});
+
     std::vector<std::string> velocity_names_old(dim, "v_old");
     u_n_minus_1.update_ghost_values();
     data_out.add_data_vector(dof_handler_velocity, u_n_minus_1, velocity_names_old, component_interpretation_velocity);
