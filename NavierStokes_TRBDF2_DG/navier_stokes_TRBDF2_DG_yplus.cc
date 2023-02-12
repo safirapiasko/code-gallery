@@ -2249,6 +2249,7 @@ namespace NS_TRBDF2 {
     unsigned int max_loc_refinements;
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
+    bool         import_mesh;
 
     std::string  saving_dir;
 
@@ -2304,6 +2305,7 @@ namespace NS_TRBDF2 {
     eps(data.eps),
     tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
+    import_mesh(data.import_mesh),
     square_cylinder(data.square_cylinder),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
@@ -2334,12 +2336,18 @@ namespace NS_TRBDF2 {
 
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
-      import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
-      // create_triangulation_with_square(n_refines);
+      if(import_mesh){
+        import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
+      }
+      else{
+        if(square_cylinder){
+          create_triangulation_with_square(n_refines);
+        }
+        else{
+          create_triangulation(n_refines);
+        }
+      }
 
-      // if(square_cylinder)
-      // else
-      //   create_triangulation(n_refines);
       setup_dofs();
       initialize();
   }
@@ -2385,7 +2393,7 @@ namespace NS_TRBDF2 {
 
     serial_triangulation.refine_global(n_refines);
   }
-  
+
   // The method that creates the triangulation and refines it the needed number
   // of times.
   //
@@ -3110,6 +3118,7 @@ namespace NS_TRBDF2 {
         }
       }
     }
+
     /*--- share which boundary points belong to which process ---*/
     auto boundary_points_to_rank_vec = Utilities::MPI::all_gather(MPI_COMM_WORLD, owned_boundary_points);
     for(auto& map : boundary_points_to_rank_vec){
@@ -3273,7 +3282,7 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector)));
+          y_plus(dof_indices[idx]) = std::max(250., distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector))));
         }
       }
     }
@@ -3543,15 +3552,25 @@ namespace NS_TRBDF2 {
   template<int dim>
   void NavierStokesProjection<dim>::run(const bool verbose, const unsigned int output_interval) {
     ConditionalOStream verbose_cout(std::cout, verbose && Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0);
-    verbose_cout << "run" << std::endl;
-    verbose_cout << "initialize nearest boundary point mapping " << std::endl;
+
     initialize_nearest_boundary_point_mapping();
-    
-    Point<dim> center =  Point<dim>(0.0, 0.0);
-    double radius = 0.5;
-    double height = 20.0;
-    double length = 30.0; 
-    double y_start = -10.0;
+
+    Point<dim> center;
+    double radius, length, height, y_start;
+
+    radius = 0.5;
+    height = 20.0;
+    length = 30.0; 
+
+    if(import_mesh) {
+      center =  Point<dim>(0.0, 0.0);
+      y_start = -10.0;
+    }
+    else {
+      center =  Point<dim>(10.0, 10.0);
+      y_start = 0.0;
+    }
+
     double time = t_0 + dt;
     unsigned int n = 1;
     if(restart && !as_initial_conditions) {
@@ -3575,47 +3594,47 @@ namespace NS_TRBDF2 {
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
 
       verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
-      auto start = std::chrono::high_resolution_clock::now();
+      // auto start = std::chrono::high_resolution_clock::now();
       interpolate_velocity();
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // auto stop = std::chrono::high_resolution_clock::now();
+      // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
       // compute y+
       verbose_cout << "  Computing y+ stage 1" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
 
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       diffusion_step();
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       verbose_cout << "  Projection Step stage 1" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       project_grad(1);
       u_tmp.equ(gamma*dt, u_tmp);
       u_star += u_tmp; /*--- In the rhs of the projection step we need u_star + gamma*dt*grad(pres_n) and we save it into u_star ---*/
       projection_step();
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       verbose_cout << "  Updating the Velocity stage 1" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       u_n_gamma.equ(1.0, u_star);
       project_grad(2);
       grad_pres_int.equ(1.0, u_tmp); /*--- We save grad(pres_int), because we will need it soon ---*/
       u_tmp.equ(-gamma*dt, u_tmp);
       u_n_gamma += u_tmp; /*--- u_n_gamma = u_star - gamma*dt*grad(pres_int) ---*/
       u_n_minus_1 = u_n;
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       /*--- Second stage of TR-BDF2 ---*/
       TR_BDF2_stage = 2;
@@ -3624,46 +3643,46 @@ namespace NS_TRBDF2 {
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
 
       verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       interpolate_velocity();
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       // compute y+
       verbose_cout << "  Computing y+ stage 1" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       compute_y_plus(u_n_gamma, y_start, y_start + height, center, 2.0 * radius);
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       diffusion_step();
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       verbose_cout << "  Projection Step stage 2" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       u_tmp.equ((1.0 - gamma)*dt, grad_pres_int);
       u_star += u_tmp;  /*--- In the rhs of the projection step we need u_star + (1 - gamma)*dt*grad(pres_int) ---*/
       projection_step();
-      stop = std::chrono::high_resolution_clock::now();
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       verbose_cout << "  Updating the Velocity stage 2" << std::endl;
-      start = std::chrono::high_resolution_clock::now();
+      // start = std::chrono::high_resolution_clock::now();
       u_n.equ(1.0, u_star);
       project_grad(1);
       u_tmp.equ((gamma - 1.0)*dt, u_tmp);
       u_n += u_tmp;  /*--- u_n = u_star - (1 - gamma)*dt*grad(pres_n) ---*/
-      stop = std::chrono::high_resolution_clock::now();
+      // stop = std::chrono::high_resolution_clock::now();
 
-      duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-      pcout << duration << std::endl;
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
  
       const double max_vel = get_maximal_velocity();
       pcout<< "Maximal velocity = " << max_vel << std::endl;

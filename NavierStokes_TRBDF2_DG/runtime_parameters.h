@@ -21,6 +21,7 @@ namespace RunTimeParameters {
 
     double Reynolds;
     double dt;
+    bool no_slip;
 
     unsigned int n_refines;            /*--- Number of refinements ---*/
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
@@ -28,7 +29,7 @@ namespace RunTimeParameters {
                                             once reached that level ---*/
     bool square_cylinder;             /*--- Flag to determine whether one wants
                                             to simulate the square cylinder or not ---*/
-
+    bool import_mesh;
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -59,9 +60,11 @@ namespace RunTimeParameters {
                                 final_time(1.0),
                                 Reynolds(1.0),
                                 dt(5e-4),
+                                no_slip(true),
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
+                                import_mesh(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 tolerance_fixed_point(1e-6),
@@ -87,6 +90,10 @@ namespace RunTimeParameters {
                         "1.0",
                         Patterns::Double(0.0),
                         " The Reynolds number. ");
+      prm.declare_entry("no_slip",
+                        "true",
+                        Patterns::Bool(),
+                        " This flag determines the boundary conditions of the domain. ");
     }
     prm.leave_subsection();
 
@@ -121,6 +128,10 @@ namespace RunTimeParameters {
                         "false",
                         Patterns::Bool(),
                         " This flag decides if we consider square or round cylinders. ");
+      prm.declare_entry("import_mesh",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if the imported mesh is used. ");
     }
     prm.leave_subsection();
 
@@ -195,6 +206,7 @@ namespace RunTimeParameters {
       initial_time = prm.get_double("initial_time");
       final_time   = prm.get_double("final_time");
       Reynolds     = prm.get_double("Reynolds");
+      no_slip      = prm.get_bool("no_slip");
     }
     prm.leave_subsection();
 
@@ -211,6 +223,7 @@ namespace RunTimeParameters {
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
       square_cylinder     = prm.get_bool("square_cylinder");
+      import_mesh         = prm.get_bool("import_mesh");
     }
     prm.leave_subsection();
 
