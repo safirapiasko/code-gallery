@@ -2514,7 +2514,7 @@ namespace NS_TRBDF2 {
                    << std::endl
                    << " The permitted range is (0," << arg2 << "]");
 
-    void import_triangulation(const unsigned int n_refines, std::string filename);
+    void import_triangulation(const unsigned int n_refines, std::string filename, double x_start, double y_start );
 
     void create_triangulation_2D(const unsigned int n_refines);
 
@@ -2701,7 +2701,7 @@ namespace NS_TRBDF2 {
       matrix_free_storage = std::make_shared<MatrixFree<dim, double>>();
 
       if(import_mesh){
-        import_triangulation(n_refines, "unstr_sqcyl_coarse.msh");
+        import_triangulation(n_refines, "unstr_sqcyl_coarse.msh", -10.0, -10.0);
       }
       else{
         if(dim == 2){
@@ -2717,7 +2717,7 @@ namespace NS_TRBDF2 {
   }
 
   template<int dim>
-  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename){
+  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename, double x_start, double y_start){
     TimerOutput::Scope t(time_table, "Import triangulation");
     triangulation.clear();
     serial_triangulation.clear();
@@ -2728,11 +2728,35 @@ namespace NS_TRBDF2 {
     std::ifstream f(filename);
     gridin.read_msh(f);
 
-    /*--- Set boundary IDs ---*/
-    triangulation.set_all_manifold_ids_on_boundary(0, 0);
-    triangulation.set_all_manifold_ids_on_boundary(1, 1);
-    triangulation.set_all_manifold_ids_on_boundary(2, 2);
-    triangulation.set_all_manifold_ids_on_boundary(3, 3);
+    // /*--- Set boundary IDs ---*/
+    // triangulation.set_all_manifold_ids_on_boundary(0, 0);
+    // triangulation.set_all_manifold_ids_on_boundary(1, 1);
+    // triangulation.set_all_manifold_ids_on_boundary(2, 2);
+    // triangulation.set_all_manifold_ids_on_boundary(3, 3);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - x_start) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - (30.0+x_start)) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < x_start + 10.5 + 1e-10 && center[0] > x_start + 9.5 - 1e-10 &&
+                  center[1] < y_start + 10.5 + 1e-10 && center[1] > y_start + 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - y_start) < 1.0e-10 ||
+                std::abs(center[1] - (20.0+y_start)) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
 
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
@@ -2749,11 +2773,35 @@ namespace NS_TRBDF2 {
     std::ifstream sf(filename);
     sgridin.read_msh(sf);
 
-    /*--- Set boundary IDs ---*/
-    serial_triangulation.set_all_manifold_ids_on_boundary(0, 0);
-    serial_triangulation.set_all_manifold_ids_on_boundary(1, 1);
-    serial_triangulation.set_all_manifold_ids_on_boundary(2, 2);
-    serial_triangulation.set_all_manifold_ids_on_boundary(3, 3);
+    // /*--- Set boundary IDs ---*/
+    // serial_triangulation.set_all_manifold_ids_on_boundary(0, 0);
+    // serial_triangulation.set_all_manifold_ids_on_boundary(1, 1);
+    // serial_triangulation.set_all_manifold_ids_on_boundary(2, 2);
+    // serial_triangulation.set_all_manifold_ids_on_boundary(3, 3);
+
+    /*--- Set boundary id ---*/
+    for(const auto& face : serial_triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - x_start) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - (30.0+x_start)) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < x_start + 10.5 + 1e-10 && center[0] > x_start + 9.5 - 1e-10 &&
+                  center[1] < y_start + 10.5 + 1e-10 && center[1] > y_start + 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - y_start) < 1.0e-10 ||
+                std::abs(center[1] - (20.0+y_start)) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
 
     serial_triangulation.refine_global(n_refines);
   }
@@ -4362,32 +4410,48 @@ namespace NS_TRBDF2 {
         mg_matrices[level].set_TR_BDF2_stage(TR_BDF2_stage);
 
       verbose_cout << "  Interpolating the velocity stage 1" << std::endl;
+      // auto start = std::chrono::high_resolution_clock::now();
       interpolate_velocity();
-
+      // auto stop = std::chrono::high_resolution_clock::now();
+      // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
       // compute y+
       verbose_cout << "  Computing y+ stage 1" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
 
       verbose_cout << "  Diffusion Step stage 1 " << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       diffusion_step();
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       verbose_cout << "  Projection Step stage 1" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       project_grad(1);
       u_tmp.equ(gamma*dt, u_tmp);
       u_star += u_tmp; /*--- In the rhs of the projection step we need u_star + gamma*dt*grad(pres_n) and we save it into u_star ---*/
       projection_step();
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       verbose_cout << "  Updating the Velocity stage 1" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       u_n_gamma.equ(1.0, u_star);
       project_grad(2);
       grad_pres_int.equ(1.0, u_tmp); /*--- We save grad(pres_int), because we will need it soon ---*/
       u_tmp.equ(-gamma*dt, u_tmp);
       u_n_gamma += u_tmp; /*--- u_n_gamma = u_star - gamma*dt*grad(pres_int) ---*/
       u_n_minus_1 = u_n;
-
-      /*--- compute artificial force for second step ---*/
-      compute_artificial_force(u_n_gamma);
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       /*--- Second stage of TR-BDF2 ---*/
       TR_BDF2_stage = 2;
       for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level)
@@ -4395,26 +4459,47 @@ namespace NS_TRBDF2 {
       navier_stokes_matrix.set_TR_BDF2_stage(TR_BDF2_stage);
 
       verbose_cout << "  Interpolating the velocity stage 2" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       interpolate_velocity();
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       // compute y+
       verbose_cout << "  Computing y+ stage 2" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       compute_y_plus(u_n_gamma, y_start, y_start + height, center, 2.0 * radius);
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       diffusion_step();
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       verbose_cout << "  Projection Step stage 2" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       u_tmp.equ((1.0 - gamma)*dt, grad_pres_int);
       u_star += u_tmp;  /*--- In the rhs of the projection step we need u_star + (1 - gamma)*dt*grad(pres_int) ---*/
       projection_step();
-
+      // stop = std::chrono::high_resolution_clock::now();
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       verbose_cout << "  Updating the Velocity stage 2" << std::endl;
+      // start = std::chrono::high_resolution_clock::now();
       u_n.equ(1.0, u_star);
       project_grad(1);
       u_tmp.equ((gamma - 1.0)*dt, u_tmp);
       u_n += u_tmp;  /*--- u_n = u_star - (1 - gamma)*dt*grad(pres_n) ---*/
+      // stop = std::chrono::high_resolution_clock::now();
 
+      // duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+      // pcout << duration << std::endl;
+ 
       const double max_vel = get_maximal_velocity();
       pcout<< "Maximal velocity = " << max_vel << std::endl;
       /*--- The Courant number is computed taking into account the polynomial degree for the velocity ---*/

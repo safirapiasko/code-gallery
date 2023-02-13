@@ -2184,7 +2184,7 @@ namespace NS_TRBDF2 {
 
     void create_triangulation_with_square(const unsigned int n_refines);
 
-    void import_triangulation(const unsigned int n_refines, std::string filename);
+    void import_triangulation(const unsigned int n_refines, std::string filename, double x_start, double y_start );
 
     void setup_dofs();
 
@@ -2355,7 +2355,7 @@ namespace NS_TRBDF2 {
   }
 
   template<int dim>
-  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename){
+  void NavierStokesProjection<dim>::import_triangulation(const unsigned int n_refines, std::string filename, double x_start, double y_start){
     TimerOutput::Scope t(time_table, "Import triangulation");
     triangulation.clear();
     serial_triangulation.clear();
@@ -2366,12 +2366,29 @@ namespace NS_TRBDF2 {
     std::ifstream f(filename);
     gridin.read_msh(f);
 
-    /*--- Set boundary IDs ---*/
-    triangulation.set_all_manifold_ids_on_boundary(0, 0);
-    triangulation.set_all_manifold_ids_on_boundary(1, 1);
-    triangulation.set_all_manifold_ids_on_boundary(2, 2);
-    triangulation.set_all_manifold_ids_on_boundary(3, 3);
-
+    /*--- Set boundary id ---*/
+    for(const auto& face : triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - x_start) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - (30.0+x_start)) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < x_start + 10.5 + 1e-10 && center[0] > x_start + 9.5 - 1e-10 &&
+                  center[1] < y_start + 10.5 + 1e-10 && center[1] > y_start + 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - y_start) < 1.0e-10 ||
+                std::abs(center[1] - (20.0+y_start)) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
     /*--- We strongly advice to check the documentation to verify the meaning of all input parameters. ---*/
     if(restart) {
       triangulation.load("./" + saving_dir + "/solution_ser-" + Utilities::int_to_string(step_restart, 5));
@@ -2387,11 +2404,29 @@ namespace NS_TRBDF2 {
     std::ifstream sf(filename);
     sgridin.read_msh(sf);
 
-    /*--- Set boundary IDs ---*/
-    serial_triangulation.set_all_manifold_ids_on_boundary(0, 0);
-    serial_triangulation.set_all_manifold_ids_on_boundary(1, 1);
-    serial_triangulation.set_all_manifold_ids_on_boundary(2, 2);
-    serial_triangulation.set_all_manifold_ids_on_boundary(3, 3);
+    /*--- Set boundary id ---*/
+    for(const auto& face : serial_triangulation.active_face_iterators()) {
+      if(face->at_boundary()) {
+        const Point<dim> center = face->center();
+        // left side
+        if(std::abs(center[0] - x_start) < 1e-10)
+          face->set_boundary_id(0);
+        // right side
+        else if(std::abs(center[0] - (30.0+x_start)) < 1e-10)
+          face->set_boundary_id(1);
+        // cylinder boundary
+        else if(center[0] < x_start + 10.5 + 1e-10 && center[0] > x_start + 9.5 - 1e-10 &&
+                  center[1] < y_start + 10.5 + 1e-10 && center[1] > y_start + 9.5 - 1e-10)
+          face->set_boundary_id(2);
+        // sides of channel
+        else {
+          Assert(std::abs(center[1] - y_start) < 1.0e-10 ||
+                std::abs(center[1] - (20.0+y_start)) < 1.0e-10,
+                ExcInternalError());
+          face->set_boundary_id(3);
+        }
+      }
+    }
 
     serial_triangulation.refine_global(n_refines);
   }
