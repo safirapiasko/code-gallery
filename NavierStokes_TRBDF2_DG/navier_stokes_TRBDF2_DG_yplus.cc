@@ -3320,7 +3320,7 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = std::max(250., distance_y * std::sqrt(Re * tau_w));
+          y_plus(dof_indices[idx]) = std::min(250., distance_y * std::sqrt(Re * tau_w));
         }
       }
     }
