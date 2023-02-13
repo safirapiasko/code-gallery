@@ -2599,6 +2599,7 @@ namespace NS_TRBDF2 {
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
     bool         import_mesh;
+    bool         no_slip;
 
     std::string  saving_dir;
 
@@ -2666,6 +2667,7 @@ namespace NS_TRBDF2 {
     tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     import_mesh(data.import_mesh),
+    no_slip(data.no_slip),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -3656,7 +3658,7 @@ namespace NS_TRBDF2 {
     /*--- Assemble marked vertices of serial triangulation ---*/
     std::vector<bool> global_boundary_vertices(serial_triangulation.n_vertices(), false);
     for (const auto &face : serial_triangulation.active_face_iterators()){
-      if(face->at_boundary() && (face->boundary_id() == 3 || face->boundary_id() == 2)){
+      if(face->at_boundary() && ((no_slip && face->boundary_id() == 3) || face->boundary_id() == 2)){
         for(unsigned int i = 0; i < face->n_vertices(); i++){
           if(!global_boundary_vertices[face->vertex_index(i)] && GridTools::find_active_cell_around_point(triangulation, face->vertex(i)) != triangulation.end() &&
               GridTools::find_active_cell_around_point(triangulation, face->vertex(i))->is_locally_owned()){
@@ -3905,16 +3907,55 @@ namespace NS_TRBDF2 {
   template <int dim>
   void NavierStokesProjection<dim>::compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length) {
     /*--- calculate gradient of u of all owned boundary points ---*/
-    std::map<int, std::vector<Tensor< 1, dim, double>>> boundary_point_to_grad_u;
+    std::map<int, double> boundary_point_to_tau_w;
     for(auto point_pair : owned_boundary_points){
       auto point = serial_triangulation.get_vertices()[point_pair.first];
       std::vector<Tensor< 1, dim, double>> grad_u(dim);
       VectorTools::point_gradient(dof_handler_velocity, vel, point, grad_u);
-      boundary_point_to_grad_u[point_pair.first] = grad_u;
+
+      // calculate normal vector of boundary point
+      Tensor<1, dim, double> normal_vector;
+      if(std::abs(point[1] - lower_boundary) < 1e-10) // south wall
+        normal_vector = Tensor<1, dim, double>({0.0, 1.0});
+      else if(std::abs(point[1] - upper_boundary) < 1e-10) // north wall
+        normal_vector = Tensor<1, dim, double>({0.0, -1.0});
+      else { // square obstacle
+        if(point[0] == center[0] - 0.5*object_length)
+          if(point[1] == center[1] - 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({-0.5*std::sqrt(2.), -0.5*std::sqrt(2.)});
+          else if(point[1] == center[1] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({-0.5*std::sqrt(2.), 0.5*std::sqrt(2.)});
+          else 
+            normal_vector = Tensor<1, dim, double>({-1, 0});
+        else if(point[1] == center[1] - 0.5*object_length)
+          if(point[0] == center[0] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0.5*std::sqrt(2.), -0.5*std::sqrt(2.)});
+          else
+            normal_vector = Tensor<1, dim, double>({0, -1});
+        else if(point[0] == center[0] + 0.5*object_length)
+          if(point[1] == center[1] + 0.5*object_length)
+            normal_vector = Tensor<1, dim, double>({0.5*std::sqrt(2.), 0.5*std::sqrt(2.)});
+          else
+            normal_vector = Tensor<1, dim, double>({1, 0});
+        else if(point[1] == center[1] + 0.5*object_length)
+          normal_vector = Tensor<1, dim, double>({0, 1});
+        else
+          std::cout << "Error in compute boundary distance for point: " << point << std::endl;  
+      }
+
+      // calculate tangential vector
+      auto tangential_vector = Tensor<1, dim, double>({normal_vector[1], -normal_vector[0]});
+
+      Tensor<1, dim, double> normal_grad_u;
+      for(unsigned int idx = 0; idx < grad_u.size(); idx++){
+        normal_grad_u[idx] = scalar_product(grad_u[idx], normal_vector);
+      }
+
+      boundary_point_to_tau_w[point_pair.first] = std::abs(scalar_product(normal_grad_u, tangential_vector));
     }
 
     /*--- Share gradient of u to all processes ---*/
-    auto boundary_point_to_grad_u_all = Utilities::MPI::all_gather(MPI_COMM_WORLD, boundary_point_to_grad_u);
+    auto boundary_point_to_tau_w_all = Utilities::MPI::all_gather(MPI_COMM_WORLD, boundary_point_to_tau_w);
 
     /*--- calculate y plus for each owned cell ---*/
     for(const auto& cell : dof_handler_deltas.active_cell_iterators()) {
@@ -3923,46 +3964,8 @@ namespace NS_TRBDF2 {
         auto boundary_point = serial_triangulation.get_vertices()[cell_to_nearest_boundary_point[cell]];
         double distance_y = boundary_point.distance(cell->center());
 
-        // calculate normal derivative of nearest boundary point
-        Tensor<1, dim, double> normal_vector;
-        if(std::abs(boundary_point[1] - lower_boundary) < 1e-10) // south wall
-          normal_vector = Tensor<1, dim, double>({0.0, 1.0});
-        else if(std::abs(boundary_point[1] - upper_boundary) < 1e-10) // north wall
-          normal_vector = Tensor<1, dim, double>({0.0, -1.0});
-        else { // square obstacle
-          if(boundary_point[0] == center[0] - 0.5*object_length)
-            if(boundary_point[1] == center[1] - 0.5*object_length)
-              normal_vector = Tensor<1, dim, double>({-0.5*std::sqrt(2.), -0.5*std::sqrt(2.)});
-            else if(boundary_point[1] == center[1] + 0.5*object_length)
-              normal_vector = Tensor<1, dim, double>({-0.5*std::sqrt(2.), 0.5*std::sqrt(2.)});
-            else 
-              normal_vector = Tensor<1, dim, double>({-1, 0});
-          else if(boundary_point[1] == center[1] - 0.5*object_length)
-            if(boundary_point[0] == center[0] + 0.5*object_length)
-              normal_vector = Tensor<1, dim, double>({0.5*std::sqrt(2.), -0.5*std::sqrt(2.)});
-            else
-              normal_vector = Tensor<1, dim, double>({0, -1});
-          else if(boundary_point[0] == center[0] + 0.5*object_length)
-            if(boundary_point[1] == center[1] + 0.5*object_length)
-              normal_vector = Tensor<1, dim, double>({0.5*std::sqrt(2.), 0.5*std::sqrt(2.)});
-            else
-              normal_vector = Tensor<1, dim, double>({1, 0});
-          else if(boundary_point[1] == center[1] + 0.5*object_length)
-            normal_vector = Tensor<1, dim, double>({0, 1});
-          else
-            std::cout << "Error in compute boundary distance for point: " << boundary_point << std::endl;  
-        }
-
-        // calculate tangential vector
-        auto tangential_vector = Tensor<1, dim, double>({normal_vector[1], -normal_vector[0]});
-
         // get grad_u in the normal direction of the boundary point
-        std::vector<Tensor< 1, dim, double>> grad_u = boundary_point_to_grad_u_all[boundary_points_to_rank[cell_to_nearest_boundary_point[cell]]][cell_to_nearest_boundary_point[cell]];
-
-        Tensor<1, dim, double> normal_grad_u;
-        for(unsigned int idx = 0; idx < grad_u.size(); idx++){
-          normal_grad_u[idx] = scalar_product(grad_u[idx], normal_vector);
-        }
+        double tau_w = boundary_point_to_tau_w_all[boundary_points_to_rank[cell_to_nearest_boundary_point[cell]]][cell_to_nearest_boundary_point[cell]];
 
         // get dof indices
         std::vector<types::global_dof_index> dof_indices(fe_deltas.dofs_per_cell);
@@ -3970,7 +3973,7 @@ namespace NS_TRBDF2 {
 
         // assign y plus
         for(unsigned int idx = 0; idx < dof_indices.size(); ++idx) {
-          y_plus(dof_indices[idx]) = std::max(250., distance_y * std::sqrt(Re * std::abs(scalar_product(normal_grad_u, tangential_vector))));
+          y_plus(dof_indices[idx]) = std::max(250., distance_y * std::sqrt(Re * tau_w));
           boundary_distance(dof_indices[idx]) = distance_y;
         }
       }
@@ -4395,7 +4398,7 @@ namespace NS_TRBDF2 {
       interpolate_velocity();
 
       // compute y+
-      verbose_cout << "  Computing y+ stage 1" << std::endl;
+      verbose_cout << "  Computing y+ stage 2" << std::endl;
       compute_y_plus(u_n_gamma, y_start, y_start + height, center, 2.0 * radius);
 
       verbose_cout << "  Diffusion Step stage 2 " << std::endl;
