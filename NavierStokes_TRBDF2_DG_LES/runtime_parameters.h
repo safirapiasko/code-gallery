@@ -40,6 +40,8 @@ namespace RunTimeParameters {
 
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
 
+    bool import_mesh; /*--- Auxiliary variable to import the grid ---*/
+
     /*--- Auxiliary parameters related to restart ---*/
     bool         restart;
     bool         save_for_restart;
@@ -66,6 +68,7 @@ namespace RunTimeParameters {
                                 verbose(true),
                                 output_interval(15),
                                 refinement_iterations(0),
+                                import_mesh(false),
                                 restart(false),
                                 save_for_restart(false),
                                 step_restart(0),
@@ -119,6 +122,10 @@ namespace RunTimeParameters {
                         "2",
                          Patterns::Integer(0, 10),
                          " The number of minimum local refinements. ");
+      prm.declare_entry("import_mesh",
+                        "false",
+                        Patterns::Bool(),
+                        " This flag decides if the imported mesh is used. ");
     }
     prm.leave_subsection();
 
@@ -209,6 +216,7 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
+      import_mesh         = prm.get_bool("import_mesh");
     }
     prm.leave_subsection();
 

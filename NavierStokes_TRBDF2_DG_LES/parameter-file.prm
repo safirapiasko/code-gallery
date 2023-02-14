@@ -19,6 +19,7 @@ subsection Space discretization
   # we set the number of global refines the triangulation must have
   # and the degree k of the pair Q_(k+1)--Q_k of velocity--pressure finite element spaces
   set n_of_refines = 2
+  set import_mesh  = false
 end
 
 subsection Data solve
