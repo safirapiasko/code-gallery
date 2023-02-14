@@ -110,7 +110,7 @@ namespace EquationData {
         for(unsigned int dj = 0; dj < dim; ++dj)
           tensor[di][dj] = 0.5*sym_grad_u[di][dj][v];
 
-      viscosity[v] = 1. / Re + Cs2 * dx[v] * dx[v] * tensor.norm() * fd;
+      viscosity[v] = 1.0/Re + Cs2*dx[v]*dx[v]*tensor.norm()*fd;
     }
 
     return viscosity;
