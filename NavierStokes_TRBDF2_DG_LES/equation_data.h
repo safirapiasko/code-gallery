@@ -85,7 +85,7 @@ namespace EquationData {
 
     Viscosity(const double initial_time = 0.0, const double Cs2_ = 0.0);
 
-    VectorizedArray<Number> value(const Point<dim, VectorizedArray<Number>>& p,
+    VectorizedArray<Number> value(const VectorizedArray<Number>& y_plus,
                                   const SymmetricTensor<2, dim, VectorizedArray<Number>>& sym_grad_u,
                                   const VectorizedArray<Number>& dx, const double& Re) const;
 
@@ -97,20 +97,20 @@ namespace EquationData {
 
 
   template<int dim, typename Number>
-  VectorizedArray<Number> Viscosity<dim, Number>::value(const Point<dim, VectorizedArray<Number>>& p,
+  VectorizedArray<Number> Viscosity<dim, Number>::value(const VectorizedArray<Number>& y_plus,
                                                         const SymmetricTensor<2, dim, VectorizedArray<Number>>& sym_grad_u,
                                                         const VectorizedArray<Number>& dx, const double& Re) const {
     auto viscosity = VectorizedArray<Number>();
     auto tensor    = Tensor<dim, dim, double>();
-
-    const double fd = 1.0;
 
     for(unsigned int v = 0; v < VectorizedArray<Number>::size(); ++v) {
       for(unsigned int di = 0; di < dim; ++di)
         for(unsigned int dj = 0; dj < dim; ++dj)
           tensor[di][dj] = 0.5*sym_grad_u[di][dj][v];
 
-      viscosity[v] = 1. / Re + Cs2 * dx[v] * dx[v] * tensor.norm() * fd;
+      const auto fd = 1.0 - std::exp(-y_plus[v]/25.0);
+
+      viscosity[v]  = 1.0/Re + Cs2*dx[v]*dx[v]*tensor.norm()*fd;
     }
 
     return viscosity;

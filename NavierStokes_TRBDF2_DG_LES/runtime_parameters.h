@@ -27,9 +27,6 @@ namespace RunTimeParameters {
     unsigned int max_loc_refinements; /*--- Number of maximum local refinements allowed ---*/
     unsigned int min_loc_refinements; /*--- Number of minimum local refinements allowed
                                             once reached that level ---*/
-    bool big_domain;                  /*--- Flag which domain one wants consider ---*/
-    bool square_cylinder;             /*--- Flag to determine whether one wants
-                                            to simulate the square cylinder or not ---*/
 
     /*--- Parameters related to the linear solver ---*/
     unsigned int max_iterations;
@@ -43,13 +40,14 @@ namespace RunTimeParameters {
 
     unsigned int refinement_iterations; /*--- Auxiliary variable about how many steps perform remeshing ---*/
 
+    bool import_mesh; /*--- Auxiliary variable to import the grid ---*/
+
     /*--- Auxiliary parameters related to restart ---*/
     bool         restart;
     bool         save_for_restart;
     unsigned int step_restart;
     double       time_restart;
     bool         as_initial_conditions;
-    bool         modify_Reynolds;
 
   protected:
     ParameterHandler prm;
@@ -64,20 +62,18 @@ namespace RunTimeParameters {
                                 n_refines(0),
                                 max_loc_refinements(0),
                                 min_loc_refinements(0),
-                                big_domain(false),
-                                square_cylinder(false),
                                 max_iterations(1000),
                                 eps(1e-12),
                                 tolerance_fixed_point(1e-6),
                                 verbose(true),
                                 output_interval(15),
                                 refinement_iterations(0),
+                                import_mesh(false),
                                 restart(false),
                                 save_for_restart(false),
                                 step_restart(0),
                                 time_restart(0.0),
-                                as_initial_conditions(false),
-                                modify_Reynolds(false) {
+                                as_initial_conditions(false) {
     prm.enter_subsection("Physical data");
     {
       prm.declare_entry("initial_time",
@@ -126,14 +122,10 @@ namespace RunTimeParameters {
                         "2",
                          Patterns::Integer(0, 10),
                          " The number of minimum local refinements. ");
-      prm.declare_entry("big_domain",
+      prm.declare_entry("import_mesh",
                         "false",
                         Patterns::Bool(),
-                        " This flag decides if the domain is chosen small or big. ");
-      prm.declare_entry("square_cylinder",
-                        "false",
-                        Patterns::Bool(),
-                        " This flag decides if we consider square or round cylinders. ");
+                        " This flag decides if the imported mesh is used. ");
     }
     prm.leave_subsection();
 
@@ -193,11 +185,6 @@ namespace RunTimeParameters {
                       Patterns::Bool(),
                       " This indicates whether restart is used as initial condition "
                       "or to continue the simulation. ");
-    prm.declare_entry("modify_Reynolds",
-                      "false",
-                      Patterns::Bool(),
-                      " This indicates whether we want to change manually the "
-                      " Reynolds number. ");
   }
 
   // We need now a routine to read all declared parameters in the constructor
@@ -229,8 +216,7 @@ namespace RunTimeParameters {
       n_refines           = prm.get_integer("n_of_refines");
       max_loc_refinements = prm.get_integer("max_loc_refinements");
       min_loc_refinements = prm.get_integer("min_loc_refinements");
-      big_domain          = prm.get_bool("big_domain");
-      square_cylinder     = prm.get_bool("square_cylinder");
+      import_mesh         = prm.get_bool("import_mesh");
     }
     prm.leave_subsection();
 
@@ -255,7 +241,6 @@ namespace RunTimeParameters {
     restart               = prm.get_bool("restart");
     save_for_restart      = prm.get_bool("save_for_restart");
     as_initial_conditions = prm.get_bool("as_initial_conditions");
-    modify_Reynolds       = prm.get_bool("modify_Reynolds");
   }
 
 } // namespace RunTimeParameters
