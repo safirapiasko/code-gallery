@@ -2447,7 +2447,6 @@ namespace NS_TRBDF2 {
     /*--- parameters to find nearest boundary vertex (for calculation of y+) ---*/
     Triangulation<dim> serial_triangulation;
     std::map<typename Triangulation<dim>::active_cell_iterator, int> cell_to_nearest_boundary_point;
-    std::vector<std::vector<int>> cell_to_nearest_boundary_point_all;
     std::vector<std::vector<bool>> process_owns_boundary_point_all;
     std::map<int, int> owned_boundary_points;
     std::map<int, int> boundary_points_to_rank;
@@ -3733,9 +3732,6 @@ namespace NS_TRBDF2 {
         boundary_point_indices.push_back(idx);
       }
     }
-
-    /*--- Share the map to all other nodes ---*/
-    cell_to_nearest_boundary_point_all = Utilities::MPI::all_gather(MPI_COMM_WORLD, boundary_point_indices);
   }
 
   // pressure average over time
