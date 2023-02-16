@@ -390,7 +390,19 @@ namespace NS_TRBDF2 {
                                                   Vec&                                         dst,
                                                   const unsigned int&                          src,
                                                   const std::pair<unsigned int, unsigned int>& face_range) const;
-  };
+    void assemble_diagonal_cell_term_project_grad(const MatrixFree<dim, Number>&               data,
+                                                  Vec&                                         dst,
+                                                  const unsigned int&                          src,
+                                                  const std::pair<unsigned int, unsigned int>& cell_range) const;
+    void assemble_diagonal_face_term_project_grad(const MatrixFree<dim, Number>&               data,
+                                                  Vec&                                         dst,
+                                                  const unsigned int&                          src,
+                                                  const std::pair<unsigned int, unsigned int>& face_range) const {}
+    void assemble_diagonal_boundary_term_project_grad(const MatrixFree<dim, Number>&               data,
+                                                      Vec&                                         dst,
+                                                      const unsigned int&                          src,
+                                                      const std::pair<unsigned int, unsigned int>& face_range) const {}
+};
 
 
   // We start with the default constructor. It is important for MultiGrid, so it is fundamental
@@ -2366,6 +2378,49 @@ namespace NS_TRBDF2 {
   }
 
 
+// Now we consider the pressure related bilinear forms. We first assemble diagonal cell term for the pressure
+  //
+  template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
+  void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
+  assemble_diagonal_cell_term_project_grad(const MatrixFree<dim, Number>&               data,
+                                           Vec&                                         dst,
+                                           const unsigned int&                          ,
+                                           const std::pair<unsigned int, unsigned int>& cell_range) const {
+    FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0);
+
+    AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
+    /*--- Build a vector of ones to be tested (here we will see the velocity as a whole vector, since
+                                               dof_handler_velocity is vectorial and so the dof values are vectors). ---*/
+    Tensor<1, dim, VectorizedArray<Number>> tmp;
+    for(unsigned int d = 0; d < dim; ++d)
+      tmp[d] = make_vectorized_array<Number>(1.0);
+
+    /*--- Loop over all cells in the range ---*/
+    for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
+      phi.reinit(cell);
+
+      /*--- Loop over all dofs ---*/
+      for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
+        for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
+          phi.submit_dof_value(Tensor<1, dim, VectorizedArray<Number>>(), j); /*--- Set all dofs to zero ---*/
+        phi.submit_dof_value(tmp, i); /*--- Set dof i equal to one ---*/
+        phi.evaluate(EvaluationFlags::values);
+
+        /*--- Loop over quadrature points ---*/
+        for(unsigned int q = 0; q < phi.n_q_points; ++q)
+          phi.submit_value(phi.get_value(q), q);
+
+        phi.integrate(EvaluationFlags::values);
+        diagonal[i] = phi.get_dof_value(i);
+      }
+      for(unsigned int i = 0; i < phi.dofs_per_component; ++i)
+        phi.submit_dof_value(diagonal[i], i);
+
+      phi.distribute_local_to_global(dst);
+    }
+  }
+
+
   // Put together all previous steps. We create a dummy auxliary vector that serves for the src input argument in
   // the previous functions that as we have seen before is unused. Then everything is done by the 'loop' function
   // and it is saved in the field 'inverse_diagonal_entries' already present in the base class. Anyway since there is
@@ -2374,7 +2429,8 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   compute_diagonal() {
-    Assert(NS_stage == 1 || NS_stage == 2, ExcInternalError());
+    Assert(NS_stage > 0, ExcInternalError());
+    Assert(NS_stage <= 3, ExcInternalError());
 
     this->inverse_diagonal_entries.reset(new DiagonalMatrix<Vec>());
     auto& inverse_diagonal = this->inverse_diagonal_entries->get_vector();
@@ -2409,6 +2465,21 @@ namespace NS_TRBDF2 {
        },
        1);
     }
+    else {
+      ::MatrixFreeTools::compute_diagonal<dim, Number, VectorizedArray<Number>>
+    (*(this->data),
+     inverse_diagonal,
+     [&](const auto& data, auto& dst, const auto& src, const auto& cell_range) {
+       (this->assemble_diagonal_cell_term_project_grad)(data, dst, src, cell_range);
+     },
+     [&](const auto& data, auto& dst, const auto& src, const auto& face_range) {
+       (this->assemble_diagonal_face_term_project_grad)(data, dst, src, face_range);
+     },
+     [&](const auto& data, auto& dst, const auto& src, const auto& boundary_range) {
+       (this->assemble_diagonal_boundary_term_project_grad)(data, dst, src, boundary_range);
+     },
+     0);
+    }
 
     for(unsigned int i = 0; i < inverse_diagonal.locally_owned_size(); ++i) {
       Assert(inverse_diagonal.local_element(i) != 0.0,
@@ -2416,7 +2487,6 @@ namespace NS_TRBDF2 {
       inverse_diagonal.local_element(i) = 1.0/inverse_diagonal.local_element(i);
     }
   }
-
 
   // @sect{The <code>NavierStokesProjection</code> class}
 
@@ -3187,38 +3257,7 @@ namespace NS_TRBDF2 {
     const unsigned int nlevels = triangulation.n_global_levels();
     mg_matrices.resize(0, nlevels - 1);
     for(unsigned int level = 0; level < nlevels; ++level) {
-      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
-      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
-      additional_data_mg.mapping_update_flags                = (update_gradients | update_JxW_values);
-      additional_data_mg.mapping_update_flags_inner_faces    = (update_gradients | update_JxW_values);
-      additional_data_mg.mapping_update_flags_boundary_faces = (update_gradients | update_JxW_values);
-      additional_data_mg.mg_level = level;
-
-      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
-      dof_handlers_mg.push_back(&dof_handler_velocity);
-      dof_handlers_mg.push_back(&dof_handler_pressure);
-      dof_handlers_mg.push_back(&dof_handler_deltas);
-
-      std::vector<const AffineConstraints<float>*> constraints_mg;
-      AffineConstraints<float> constraints_velocity_mg;
-      constraints_velocity_mg.clear();
-      constraints_velocity_mg.close();
-      constraints_mg.push_back(&constraints_velocity_mg);
-      AffineConstraints<float> constraints_pressure_mg;
-      constraints_pressure_mg.clear();
-      constraints_pressure_mg.close();
-      constraints_mg.push_back(&constraints_pressure_mg);
-      AffineConstraints<float> constraints_deltas_mg;
-      constraints_deltas_mg.clear();
-      constraints_deltas_mg.close();
-      constraints_mg.push_back(&constraints_deltas_mg);
-
-      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-      mg_mf_storage_level->reinit(MappingQ1<dim>(),dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
-      const std::vector<unsigned int> tmp = {1};
-      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
       mg_matrices[level].set_dt(dt);
-      mg_matrices[level].set_NS_stage(2);
     }
 
     Linfty_error_per_cell_vel.reinit(triangulation.n_active_cells());
@@ -3384,6 +3423,43 @@ namespace NS_TRBDF2 {
     SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
 
     /*--- Build the preconditioner (as in step-37) ---*/
+    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+      std::vector<QGauss<1>> quadratures;
+      quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
+      quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
+
+      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+      dof_handlers_mg.push_back(&dof_handler_velocity);
+      dof_handlers_mg.push_back(&dof_handler_pressure);
+      dof_handlers_mg.push_back(&dof_handler_deltas);
+
+      std::vector<const AffineConstraints<float>*> constraints_mg;
+      AffineConstraints<float> constraints_velocity_mg;
+      constraints_velocity_mg.clear();
+      constraints_velocity_mg.close();
+      constraints_mg.push_back(&constraints_velocity_mg);
+      AffineConstraints<float> constraints_pressure_mg;
+      constraints_pressure_mg.clear();
+      constraints_pressure_mg.close();
+      constraints_mg.push_back(&constraints_pressure_mg);
+      AffineConstraints<float> constraints_yplus_mg;
+      constraints_yplus_mg.clear();
+      constraints_yplus_mg.close();
+      constraints_mg.push_back(&constraints_yplus_mg);
+
+      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+      additional_data_mg.mapping_update_flags                = (update_values | update_JxW_values);
+      additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_JxW_values );
+      additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_JxW_values );
+      additional_data_mg.mg_level                            = level;
+
+      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+      mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
+      mg_matrices[level].set_NS_stage(2);
+    }
+
     MGTransferMatrixFree<dim, float> mg_transfer;
     mg_transfer.build(dof_handler_pressure);
 
@@ -3470,7 +3546,98 @@ namespace NS_TRBDF2 {
     /*--- Solve the system ---*/
     SolverControl solver_control(max_its, 1e-12*rhs_u.l2_norm());
     SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
-    cg.solve(navier_stokes_matrix, u_tmp, rhs_u, PreconditionIdentity());
+
+    /*--- Build the preconditioner (as in step-37) ---*/
+    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+      std::vector<QGauss<1>> quadratures;
+      quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
+      quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
+
+      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+      dof_handlers_mg.push_back(&dof_handler_velocity);
+      dof_handlers_mg.push_back(&dof_handler_pressure);
+      dof_handlers_mg.push_back(&dof_handler_deltas);
+
+      std::vector<const AffineConstraints<float>*> constraints_mg;
+      AffineConstraints<float> constraints_velocity_mg;
+      constraints_velocity_mg.clear();
+      constraints_velocity_mg.close();
+      constraints_mg.push_back(&constraints_velocity_mg);
+      AffineConstraints<float> constraints_pressure_mg;
+      constraints_pressure_mg.clear();
+      constraints_pressure_mg.close();
+      constraints_mg.push_back(&constraints_pressure_mg);
+      AffineConstraints<float> constraints_yplus_mg;
+      constraints_yplus_mg.clear();
+      constraints_yplus_mg.close();
+      constraints_mg.push_back(&constraints_yplus_mg);
+
+      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+      additional_data_mg.mapping_update_flags                = (update_values | update_gradients | update_JxW_values);
+      additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_gradients | update_JxW_values );
+      additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_gradients | update_JxW_values );
+      additional_data_mg.mg_level                            = level;
+
+      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+      mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
+      mg_matrices[level].set_NS_stage(3);
+    }
+
+    MGTransferMatrixFree<dim, float> mg_transfer;
+    mg_transfer.build(dof_handler_velocity);
+
+    using SmootherType = PreconditionChebyshev<NavierStokesProjectionOperator<dim,
+                                                                              EquationData::degree_p,
+                                                                              EquationData::degree_p + 1,
+                                                                              EquationData::degree_p + 1,
+                                                                              EquationData::degree_p + 2,
+                                                                              LinearAlgebra::distributed::Vector<float>>,
+                                               LinearAlgebra::distributed::Vector<float>>;
+    mg::SmootherRelaxation<SmootherType, LinearAlgebra::distributed::Vector<float>> mg_smoother;
+    MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
+    smoother_data.resize(0, triangulation.n_global_levels() - 1);
+    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+      if(level > 0) {
+        smoother_data[level].smoothing_range     = 15.0;
+        smoother_data[level].degree              = 3;
+        smoother_data[level].eig_cg_n_iterations = 10;
+      }
+      else {
+        smoother_data[0].smoothing_range     = 2e-2;
+        smoother_data[0].degree              = numbers::invalid_unsigned_int;
+        smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
+      }
+
+      mg_matrices[level].compute_diagonal();
+      smoother_data[level].preconditioner = mg_matrices[level].get_matrix_diagonal_inverse();
+    }
+    mg_smoother.initialize(mg_matrices, smoother_data);
+
+    PreconditionIdentity                                identity;
+    SolverCG<LinearAlgebra::distributed::Vector<float>> cg_mg(solver_control);
+    MGCoarseGridIterativeSolver<LinearAlgebra::distributed::Vector<float>,
+                                SolverCG<LinearAlgebra::distributed::Vector<float>>,
+                                NavierStokesProjectionOperator<dim,
+                                                               EquationData::degree_p,
+                                                               EquationData::degree_p + 1,
+                                                               EquationData::degree_p + 1,
+                                                               EquationData::degree_p + 2,
+                                                               LinearAlgebra::distributed::Vector<float>>,
+                                PreconditionIdentity> mg_coarse(cg_mg, mg_matrices[0], identity);
+
+    mg::Matrix<LinearAlgebra::distributed::Vector<float>> mg_matrix(mg_matrices);
+
+    Multigrid<LinearAlgebra::distributed::Vector<float>> mg(mg_matrix, mg_coarse, mg_transfer, mg_smoother, mg_smoother);
+
+    PreconditionMG<dim,
+                   LinearAlgebra::distributed::Vector<float>,
+                   MGTransferMatrixFree<dim, float>> preconditioner(dof_handler_velocity, mg, mg_transfer);
+
+    /*--- Solve the system ---*/
+    pcout << "before cg solve" << std::endl;
+    cg.solve(navier_stokes_matrix, u_tmp, rhs_u, preconditioner);
   }
 
 
