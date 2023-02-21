@@ -4525,12 +4525,12 @@ namespace NS_TRBDF2 {
       y_start = 0.0;
     }
 
-    // verbose_cout << " initialize statistics points" << std::endl;
-    // initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
-    // horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
-    // vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
-    // vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
-    // vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
+    verbose_cout << " initialize statistics points" << std::endl;
+    initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
+    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
 
     double time = t_0 + dt;
     unsigned int n = 1;
@@ -4551,12 +4551,12 @@ namespace NS_TRBDF2 {
 
       output_results(1);
 
-      // compute_pressure_avg_over_boundary(n);
-      // compute_stress_avg_over_boundary(n, center, 2.0 * radius);
-      // compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
-      // compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
-      // compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
-      // compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
+      compute_pressure_avg_over_boundary(n);
+      compute_stress_avg_over_boundary(n, center, 2.0 * radius, y_start, y_start + height);
+      compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
+      compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
+      compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
+      compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
     }
     while(std::abs(T - time) > 1e-10) {
       time += dt;
@@ -4671,16 +4671,16 @@ namespace NS_TRBDF2 {
 
       compute_lift_and_drag();
 
-      // // compute time average of parameters along different points
-      // compute_pressure_avg_over_boundary(n);
-      // compute_stress_avg_over_boundary(n, center, 2.0 * radius);
-      // compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
-      // compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
-      // compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
-      // compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
+      // compute time average of parameters along different points
+      compute_pressure_avg_over_boundary(n);
+      compute_stress_avg_over_boundary(n, center, 2.0 * radius, y_start, y_start + height);
+      compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
+      compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
+      compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
+      compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
 
-      // // compute lipschitz number at every timestep
-      // compute_lipschitz_number();
+      // compute lipschitz number at every timestep
+      compute_lipschitz_number();
 
       if(n % output_interval == 0) {
         verbose_cout << "Plotting Solution final" << std::endl;
