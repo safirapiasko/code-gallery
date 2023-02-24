@@ -37,3 +37,1031 @@
 
 # Build folders
 **/build/*
+LES_square/test/drag 2.dat
+LES_square/test/equation_data 2.h
+LES_square/test/lift 2.dat
+LES_square/test/lipschitz 2.dat
+LES_square/test/n_dofs_pressure 2.dat
+LES_square/test/n_dofs_velocity 2.dat
+LES_square/test/navier_stokes_TRBDF2_DG 2.cc
+LES_square/test/output 2.txt
+LES_square/test/parameter-file 2.prm
+LES_square/test/runtime_parameters 2.h
+LES_square/test/solution_ser-00001 2
+LES_square/test/solution_ser-00001 2.info
+LES_square/test/solution_ser-00001_fixed 2.data
+LES_square/test/solution_ser-06000 2
+LES_square/test/solution_ser-06000 2.info
+LES_square/test/solution_ser-06000_fixed 2.data
+LES_square/test/solution_ser-12000 2
+LES_square/test/solution_ser-12000 2.info
+LES_square/test/solution_ser-12000_fixed 2.data
+LES_square/test/solution_ser-18000 2
+LES_square/test/solution_ser-18000 2.info
+LES_square/test/solution_ser-18000_fixed 2.data
+LES_square/test/solution_ser-24000 2
+LES_square/test/solution_ser-24000 2.info
+LES_square/test/solution_ser-24000_fixed 2.data
+LES_square/test/solution_ser-30000 2
+LES_square/test/solution_ser-30000 2.info
+LES_square/test/solution_ser-30000_fixed 2.data
+LES_square/test/solution_ser-36000 2
+LES_square/test/solution_ser-36000 2.info
+LES_square/test/solution_ser-36000_fixed 2.data
+LES_square/test/solution_ser-42000 2
+LES_square/test/solution_ser-42000 2.info
+LES_square/test/solution_ser-42000_fixed 2.data
+LES_square/test/solution_ser-48000 2
+LES_square/test/solution_ser-48000 2.info
+LES_square/test/solution_ser-48000_fixed 2.data
+LES_square/test/solution_ser-54000 2
+LES_square/test/solution_ser-54000 2.info
+LES_square/test/solution_ser-54000_fixed 2.data
+LES_square/test/solution_ser-60000 2
+LES_square/test/solution_ser-60000 2.info
+LES_square/test/solution_ser-60000_fixed 2.data
+LES_square/test/solution_ser-60001 2
+LES_square/test/solution_ser-60001 2.info
+LES_square/test/solution_ser-60001_fixed 2.data
+LES_square/test/solution-00001 2.vtu
+LES_square/test/solution-06000 2.vtu
+LES_square/test/solution-12000 2.vtu
+LES_square/test/solution-18000 2.vtu
+LES_square/test/solution-24000 2.vtu
+LES_square/test/solution-30000 2.vtu
+LES_square/test/solution-36000 2.vtu
+LES_square/test/solution-42000 2.vtu
+LES_square/test/solution-48000 2.vtu
+LES_square/test/solution-54000 2.vtu
+LES_square/test/solution-60000 2.vtu
+LES_square/test/solution-60001 2.vtu
+LES_square/test/time_analysis_2proc 2.dat
+LES_square/test/time_analysis_56proc 2.dat
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/build 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/progress 2.make
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/drag 2.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/equation_data 2.h
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/lift 2.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/navier_stokes_TRBDF2_DG 2.cc
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/output 2.txt
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/parameter-file 2.prm
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/runtime_parameters 2.h
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000 2
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000 2.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00400 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00800 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-01200 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-01600 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02000 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02400 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02800 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-03200 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-03600 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-04000 2.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/time_analysis_56proc 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/drag 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/lift 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/lipschitz 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/time_analysis_2proc 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/avg_p 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/avg_stress 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/Cf 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/Cp 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/drag 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/lift 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/lipschitz 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_hor 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver1 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver2 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver3 2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008 2
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008 2.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008_fixed 2.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00002 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00003 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00004 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00005 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00006 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00007 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00008 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00009 2.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/time_analysis_2proc 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/avg_p 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/Cf 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/Cp 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/drag 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/lift 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/lipschitz 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_angle 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_cart 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_00d 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_45d 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_90d 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_hor 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver1 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver2 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver3 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001 2
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001 2.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 5.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 6.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 7.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 8.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002 2
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002 2.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002_fixed 2.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003 2
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003 2.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003_fixed 2.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007 2
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007 2.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007_fixed 2.data
+NavierStokes_TRBDF2_adaption/SimTest/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00002 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00003 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00007 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00100 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_1proc 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_2proc 2.dat
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_3proc 2.dat
+.gitignore
+NavierStokes_TRBDF2_adaption/test/drag 2.dat
+NavierStokes_TRBDF2_adaption/test/lift 2.dat
+NavierStokes_TRBDF2_adaption/test/lipschitz 2.dat
+NavierStokes_TRBDF2_adaption/test/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/test/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_hor 2.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver1 2.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver2 2.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver3 2.dat
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed 5.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed 6.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed 5.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed 6.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed 5.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed 6.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed 5.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed 6.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006 2
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006 2.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed 4.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed 5.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed 6.data
+NavierStokes_TRBDF2_adaption/test/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00002 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 11.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 12.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 13.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 14.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 15.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 16.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 17.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 18.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 19.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 20.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 11.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 12.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 13.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 14.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 15.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 16.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 17.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 18.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 19.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 20.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 17.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 18.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 19.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 20.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 21.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 22.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 23.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 24.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 25.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 26.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 27.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 28.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 29.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 30.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 31.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 32.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 17.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 18.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 19.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 20.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 21.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 22.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 23.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 24.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 25.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 26.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 27.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 28.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 29.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 30.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 31.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 32.vtu
+NavierStokes_TRBDF2_adaption/test/time_analysis_2proc 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/avg_p 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/Cf 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/Cp 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/drag 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/lift 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/lipschitz 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_hor 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver1 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver2 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver3 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00001 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00005 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00100 2.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/time_analysis_1proc 2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/time_analysis_2proc 2.dat
+NavierStokes_TRBDF2_DG/CMakeFiles/cmake 2.check_cache
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeDirectoryInformation 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeOutput 2.log
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeRuleHashes 2.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/Makefile 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/Makefile2 2
+NavierStokes_TRBDF2_DG/CMakeFiles/print_usage 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/progress 2.marks
+NavierStokes_TRBDF2_DG/CMakeFiles/TargetDirectories 2.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeCCompiler 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeCXXCompiler 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_C 2.bin
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_CXX 2.bin
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeSystem 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CompilerIdC/CMakeCCompilerId 2.c
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CompilerIdCXX/CMakeCXXCompilerId 2.cpp
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend 2.internal
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/flags 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/link 2.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/navier_stokes_TRBDF2_DG.cc.o 2.d
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/progress 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/build 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/cmake_clean 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/compiler_depend 2.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/compiler_depend 2.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/DependInfo 2.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/progress 2.make
+NavierStokes_TRBDF2_DG/SimTest/drag 2.dat
+NavierStokes_TRBDF2_DG/SimTest/lift 2.dat
+NavierStokes_TRBDF2_DG/SimTest/n_dofs_pressure 2.dat
+NavierStokes_TRBDF2_DG/SimTest/n_dofs_velocity 2.dat
+NavierStokes_TRBDF2_DG/SimTest/solution-00001 2.vtu
+NavierStokes_TRBDF2_DG/SimTest/time_analysis_1proc 2.dat
+NavierStokes_TRBDF2_DG/SimTest/time_analysis_2proc 2.dat
+.gitignore
+NavierStokes_TRBDF2_DG/CMakeCache 2.txt
+LES_square/CMakeFiles/cmake.check_cache
+LES_square/CMakeFiles/CMakeDirectoryInformation.cmake
+LES_square/CMakeFiles/CMakeOutput.log
+LES_square/CMakeFiles/CMakeRuleHashes.txt
+LES_square/CMakeFiles/Makefile.cmake
+LES_square/CMakeFiles/Makefile2
+LES_square/CMakeFiles/print_usage.cmake
+LES_square/CMakeFiles/progress.marks
+LES_square/CMakeFiles/TargetDirectories.txt
+LES_square/CMakeFiles/3.24.2/CMakeCCompiler.cmake
+LES_square/CMakeFiles/3.24.2/CMakeCXXCompiler.cmake
+LES_square/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_C.bin
+LES_square/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_CXX.bin
+LES_square/CMakeFiles/3.24.2/CMakeSystem.cmake
+LES_square/CMakeFiles/3.24.2/CompilerIdC/CMakeCCompilerId.c
+LES_square/CMakeFiles/3.24.2/CompilerIdCXX/CMakeCXXCompilerId.cpp
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/build.make
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/cmake_clean.cmake
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.internal
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.make
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.ts
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/depend.make
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/DependInfo.cmake
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/flags.make
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/link.txt
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/navier_stokes_TRBDF2_DG.cc.o.d
+LES_square/CMakeFiles/NS_TRBDF2_DG.dir/progress.make
+LES_square/CMakeFiles/debug.dir/build.make
+LES_square/CMakeFiles/debug.dir/cmake_clean.cmake
+LES_square/CMakeFiles/debug.dir/compiler_depend.make
+LES_square/CMakeFiles/debug.dir/compiler_depend.ts
+LES_square/CMakeFiles/debug.dir/DependInfo.cmake
+LES_square/CMakeFiles/debug.dir/progress.make
+LES_square/CMakeFiles/distclean.dir/build.make
+LES_square/CMakeFiles/distclean.dir/cmake_clean.cmake
+LES_square/CMakeFiles/distclean.dir/compiler_depend.make
+LES_square/CMakeFiles/distclean.dir/compiler_depend.ts
+LES_square/CMakeFiles/distclean.dir/DependInfo.cmake
+LES_square/CMakeFiles/distclean.dir/progress.make
+LES_square/CMakeFiles/info.dir/build.make
+LES_square/CMakeFiles/info.dir/cmake_clean.cmake
+LES_square/CMakeFiles/info.dir/compiler_depend.make
+LES_square/CMakeFiles/info.dir/compiler_depend.ts
+LES_square/CMakeFiles/info.dir/DependInfo.cmake
+LES_square/CMakeFiles/info.dir/progress.make
+LES_square/CMakeFiles/release.dir/build.make
+LES_square/CMakeFiles/release.dir/cmake_clean.cmake
+LES_square/CMakeFiles/release.dir/compiler_depend.make
+LES_square/CMakeFiles/release.dir/compiler_depend.ts
+LES_square/CMakeFiles/release.dir/DependInfo.cmake
+LES_square/CMakeFiles/release.dir/progress.make
+LES_square/CMakeFiles/run.dir/build.make
+LES_square/CMakeFiles/run.dir/cmake_clean.cmake
+LES_square/CMakeFiles/run.dir/compiler_depend.make
+LES_square/CMakeFiles/run.dir/compiler_depend.ts
+LES_square/CMakeFiles/run.dir/DependInfo.cmake
+LES_square/CMakeFiles/run.dir/progress.make
+LES_square/CMakeFiles/runclean.dir/build.make
+LES_square/CMakeFiles/runclean.dir/cmake_clean.cmake
+LES_square/CMakeFiles/runclean.dir/compiler_depend.make
+LES_square/CMakeFiles/runclean.dir/compiler_depend.ts
+LES_square/CMakeFiles/runclean.dir/DependInfo.cmake
+LES_square/CMakeFiles/runclean.dir/progress.make
+LES_square/CMakeFiles/sign.dir/build.make
+LES_square/CMakeFiles/sign.dir/cmake_clean.cmake
+LES_square/CMakeFiles/sign.dir/compiler_depend.make
+LES_square/CMakeFiles/sign.dir/compiler_depend.ts
+LES_square/CMakeFiles/sign.dir/DependInfo.cmake
+LES_square/CMakeFiles/sign.dir/progress.make
+LES_square/CMakeFiles/strip_comments.dir/build.make
+LES_square/CMakeFiles/strip_comments.dir/cmake_clean.cmake
+LES_square/CMakeFiles/strip_comments.dir/compiler_depend.make
+LES_square/CMakeFiles/strip_comments.dir/compiler_depend.ts
+LES_square/CMakeFiles/strip_comments.dir/DependInfo.cmake
+LES_square/CMakeFiles/strip_comments.dir/progress.make
+LES_square/test/drag.dat
+LES_square/test/equation_data.h
+LES_square/test/lift.dat
+LES_square/test/lipschitz.dat
+LES_square/test/n_dofs_pressure.dat
+LES_square/test/n_dofs_velocity.dat
+LES_square/test/navier_stokes_TRBDF2_DG.cc
+LES_square/test/output.txt
+LES_square/test/parameter-file.prm
+LES_square/test/runtime_parameters.h
+LES_square/test/solution_ser-00001
+LES_square/test/solution_ser-00001_fixed.data
+LES_square/test/solution_ser-00001.info
+LES_square/test/solution_ser-06000
+LES_square/test/solution_ser-06000_fixed.data
+LES_square/test/solution_ser-06000.info
+LES_square/test/solution_ser-12000
+LES_square/test/solution_ser-12000_fixed.data
+LES_square/test/solution_ser-12000.info
+LES_square/test/solution_ser-18000
+LES_square/test/solution_ser-18000_fixed.data
+LES_square/test/solution_ser-18000.info
+LES_square/test/solution_ser-24000
+LES_square/test/solution_ser-24000_fixed.data
+LES_square/test/solution_ser-24000.info
+LES_square/test/solution_ser-30000
+LES_square/test/solution_ser-30000_fixed.data
+LES_square/test/solution_ser-30000.info
+LES_square/test/solution_ser-36000
+LES_square/test/solution_ser-36000_fixed.data
+LES_square/test/solution_ser-36000.info
+LES_square/test/solution_ser-42000
+LES_square/test/solution_ser-42000_fixed.data
+LES_square/test/solution_ser-42000.info
+LES_square/test/solution_ser-48000
+LES_square/test/solution_ser-48000_fixed.data
+LES_square/test/solution_ser-48000.info
+LES_square/test/solution_ser-54000
+LES_square/test/solution_ser-54000_fixed.data
+LES_square/test/solution_ser-54000.info
+LES_square/test/solution_ser-60000
+LES_square/test/solution_ser-60000_fixed.data
+LES_square/test/solution_ser-60000.info
+LES_square/test/solution_ser-60001
+LES_square/test/solution_ser-60001_fixed.data
+LES_square/test/solution_ser-60001.info
+LES_square/test/solution-00001.vtu
+LES_square/test/solution-06000.vtu
+LES_square/test/solution-12000.vtu
+LES_square/test/solution-18000.vtu
+LES_square/test/solution-24000.vtu
+LES_square/test/solution-30000.vtu
+LES_square/test/solution-36000.vtu
+LES_square/test/solution-42000.vtu
+LES_square/test/solution-48000.vtu
+LES_square/test/solution-54000.vtu
+LES_square/test/solution-60000.vtu
+LES_square/test/solution-60001.vtu
+LES_square/test/time_analysis_2proc.dat
+LES_square/test/time_analysis_56proc.dat
+LES_square/cmake_install.cmake
+.gitignore
+.gitignore
+LES_square/CMakeCache.txt
+LES_square/compile_commands.json
+LES_square/Makefile
+LES_square/NS_TRBDF2_DG
+NavierStokes_TRBDF2_DG/SimTest/drag.dat
+NavierStokes_TRBDF2_DG/SimTest/lift.dat
+NavierStokes_TRBDF2_DG/SimTest/n_dofs_pressure.dat
+NavierStokes_TRBDF2_DG/SimTest/n_dofs_velocity.dat
+NavierStokes_TRBDF2_DG/SimTest/solution-00001.vtu
+NavierStokes_TRBDF2_DG/SimTest/time_analysis_1proc.dat
+NavierStokes_TRBDF2_DG/SimTest/time_analysis_2proc.dat
+NavierStokes_TRBDF2_DG/compile_commands.json
+NavierStokes_TRBDF2_DG/Makefile
+NavierStokes_TRBDF2_DG/NS_TRBDF2_DG
+NavierStokes_TRBDF2_DG/CMakeFiles/cmake.check_cache
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeDirectoryInformation.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeOutput.log
+NavierStokes_TRBDF2_DG/CMakeFiles/CMakeRuleHashes.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/Makefile.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/Makefile2
+NavierStokes_TRBDF2_DG/CMakeFiles/print_usage.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/progress.marks
+NavierStokes_TRBDF2_DG/CMakeFiles/TargetDirectories.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeCCompiler.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeCXXCompiler.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_C.bin
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_CXX.bin
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CMakeSystem.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CompilerIdC/CMakeCCompilerId.c
+NavierStokes_TRBDF2_DG/CMakeFiles/3.24.2/CompilerIdCXX/CMakeCXXCompilerId.cpp
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.internal
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/flags.make
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/link.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/navier_stokes_TRBDF2_DG.cc.o.d
+NavierStokes_TRBDF2_DG/CMakeFiles/NS_TRBDF2_DG.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/Progress/1
+NavierStokes_TRBDF2_DG/CMakeFiles/Progress/count.txt
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/debug.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/distclean.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/info.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/release.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/run.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/runclean.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/sign.dir/progress.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/build.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/compiler_depend.make
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/compiler_depend.ts
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/DependInfo.cmake
+NavierStokes_TRBDF2_DG/CMakeFiles/strip_comments.dir/progress.make
+NavierStokes_TRBDF2_DG/cmake_install.cmake
+NavierStokes_TRBDF2_adaption/test/avg_p.dat
+NavierStokes_TRBDF2_adaption/test/avg_stress.dat
+NavierStokes_TRBDF2_adaption/test/Cf.dat
+NavierStokes_TRBDF2_adaption/test/Cp.dat
+NavierStokes_TRBDF2_adaption/test/drag.dat
+NavierStokes_TRBDF2_adaption/test/lift.dat
+NavierStokes_TRBDF2_adaption/test/lipschitz.dat
+NavierStokes_TRBDF2_adaption/test/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/test/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_hor.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver1.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver2.dat
+NavierStokes_TRBDF2_adaption/test/out_vel_ver3.dat
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00001.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00002.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00003.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00004.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00005.info
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed 2.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed 3.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006_fixed.data
+NavierStokes_TRBDF2_adaption/test/solution_ser-00006.info
+NavierStokes_TRBDF2_adaption/test/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00002.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 3.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 4.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 5.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 6.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 7.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 8.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 9.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003 10.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00003.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 3.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 4.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 5.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 6.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 7.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 8.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 9.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004 10.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00004.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 3.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 4.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 5.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 6.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 7.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 8.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 9.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 10.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 11.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 12.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 13.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 14.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 15.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005 16.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00005.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 2.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 3.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 4.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 5.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 6.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 7.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 8.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 9.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 10.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 11.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 12.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 13.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 14.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 15.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006 16.vtu
+NavierStokes_TRBDF2_adaption/test/solution-00006.vtu
+NavierStokes_TRBDF2_adaption/test/time_analysis_2proc.dat
+NavierStokes_TRBDF2_adaption/CMakeFiles/cmake.check_cache
+NavierStokes_TRBDF2_adaption/CMakeFiles/CMakeDirectoryInformation.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/CMakeOutput.log
+NavierStokes_TRBDF2_adaption/CMakeFiles/CMakeRuleHashes.txt
+NavierStokes_TRBDF2_adaption/CMakeFiles/Makefile.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/Makefile2
+NavierStokes_TRBDF2_adaption/CMakeFiles/print_usage.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/progress.marks
+NavierStokes_TRBDF2_adaption/CMakeFiles/TargetDirectories.txt
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CMakeCCompiler.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CMakeCXXCompiler.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_C.bin
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CMakeDetermineCompilerABI_CXX.bin
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CMakeSystem.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CompilerIdC/CMakeCCompilerId.c
+NavierStokes_TRBDF2_adaption/CMakeFiles/3.24.2/CompilerIdCXX/CMakeCXXCompilerId.cpp
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.internal
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/flags.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/link.txt
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/navier_stokes_TRBDF2_DG.cc.o.d
+NavierStokes_TRBDF2_adaption/CMakeFiles/NS_TRBDF2_DG.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/debug.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/distclean.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/info.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/release.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/run.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/runclean.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/sign.dir/progress.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/build.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/cmake_clean.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/compiler_depend.make
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/compiler_depend.ts
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/DependInfo.cmake
+NavierStokes_TRBDF2_adaption/CMakeFiles/strip_comments.dir/progress.make
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/drag.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/equation_data.h
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/lift.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/navier_stokes_TRBDF2_DG.cc
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/output.txt
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/parameter-file.prm
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/runtime_parameters.h
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00001.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00400.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-00800.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01200.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-01600.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02000.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02400.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-02800.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03200.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-03600.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000_fixed.data
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution_ser-04000.info
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00400.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-00800.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-01200.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-01600.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02000.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02400.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-02800.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-03200.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-03600.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/solution-04000.vtu
+NavierStokes_TRBDF2_adaption/Re100_DNS_3ref/time_analysis_56proc.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/drag.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/lift.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/lipschitz.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution_ser-00001.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty/time_analysis_2proc.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/avg_p.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/avg_stress.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/Cf.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/Cp.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/drag.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/lift.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/lipschitz.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_hor.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver1.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver2.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/out_vel_ver3.dat
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00001.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00002.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00003.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00004.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00005.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00006.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00007.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008_fixed.data
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution_ser-00008.info
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00002.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00003.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00004.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00005.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00006.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00007.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00008.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/solution-00009.vtu
+NavierStokes_TRBDF2_adaption/Re3900_DNS_3ref_no_slip_empty_fixedpoint_rhsflux/time_analysis_2proc.dat
+NavierStokes_TRBDF2_adaption/SimTest/avg_p.dat
+NavierStokes_TRBDF2_adaption/SimTest/Cf.dat
+NavierStokes_TRBDF2_adaption/SimTest/Cp.dat
+NavierStokes_TRBDF2_adaption/SimTest/drag.dat
+NavierStokes_TRBDF2_adaption/SimTest/lift.dat
+NavierStokes_TRBDF2_adaption/SimTest/lipschitz.dat
+NavierStokes_TRBDF2_adaption/SimTest/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/SimTest/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_angle.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_cart.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_00d.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_45d.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_90d.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_hor.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver1.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver2.dat
+NavierStokes_TRBDF2_adaption/SimTest/out_vel_ver3.dat
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 2.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 3.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed 4.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001_fixed.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00001.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002_fixed.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00002.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003_fixed.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00003.info
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007_fixed.data
+NavierStokes_TRBDF2_adaption/SimTest/solution_ser-00007.info
+NavierStokes_TRBDF2_adaption/SimTest/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00002.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00003.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00007.vtu
+NavierStokes_TRBDF2_adaption/SimTest/solution-00100.vtu
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_1proc.dat
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_2proc.dat
+NavierStokes_TRBDF2_adaption/SimTest/time_analysis_3proc.dat
+NavierStokes_TRBDF2_adaption/SimTest2/avg_p.dat
+NavierStokes_TRBDF2_adaption/SimTest2/Cf.dat
+NavierStokes_TRBDF2_adaption/SimTest2/Cp.dat
+NavierStokes_TRBDF2_adaption/SimTest2/drag.dat
+NavierStokes_TRBDF2_adaption/SimTest2/lift.dat
+NavierStokes_TRBDF2_adaption/SimTest2/lipschitz.dat
+NavierStokes_TRBDF2_adaption/SimTest2/n_dofs_pressure.dat
+NavierStokes_TRBDF2_adaption/SimTest2/n_dofs_velocity.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_hor.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver1.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver2.dat
+NavierStokes_TRBDF2_adaption/SimTest2/out_vel_ver3.dat
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00001.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00005.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/solution-00100.vtu
+NavierStokes_TRBDF2_adaption/SimTest2/time_analysis_1proc.dat
+NavierStokes_TRBDF2_adaption/SimTest2/time_analysis_2proc.dat
+NavierStokes_TRBDF2_adaption/cmake_install.cmake
+NavierStokes_TRBDF2_adaption/CMakeCache.txt
+NavierStokes_TRBDF2_adaption/compile_commands.json
+NavierStokes_TRBDF2_DG/CMakeCache.txt
