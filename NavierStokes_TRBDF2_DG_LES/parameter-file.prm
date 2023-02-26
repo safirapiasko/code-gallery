@@ -2,15 +2,15 @@ subsection Physical data
   # In this subsection we declare the physical data
   # The initial and final time, and the Reynolds number
   set initial_time = 0.0
-  set final_time   = 50.0
-  set Reynolds     = 1000.0
-  set Cs           = 0.01
+  set final_time   = 300.0
+  set Reynolds     = 100.0
+  set Cs2          = 0.01
 end
 
 subsection Time step data
   # In this subsection we declare the data that is to be used for time discretization,
   # i.e. the time step dt
-  set dt           = 1.0e-3
+  set dt           = 5.0e-3
   set time_restart = 0.0
 end
 
@@ -31,12 +31,12 @@ subsection Data solve
   set tolerance_fixed_point = 1e-8
 end
 
-set saving directory = Re1000_LES_2ref_extr_square_new_grid_restart
+set saving directory = Re100_LES_2ref_extr_y_plus_square_new_grid
 
 set refinement_iterations = 0
 
 #The output frequency
-set output_interval = 5000
+set output_interval = 6000
 
 #Finally we set the verbosity level
 set verbose = true
@@ -45,7 +45,7 @@ set verbose = true
 set as_initial_conditions = true
 
 #Set whether we are in presence of a restart or not
-set restart = true
+set restart = false
 
 #Set if you want to save files for possible restart
-set save_for_restart = false
+set save_for_restart = true
