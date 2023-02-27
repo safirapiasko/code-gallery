@@ -110,7 +110,7 @@ namespace EquationData {
 
       const auto fd = 1.0 - std::exp(-y_plus[v]/25.0);
 
-      viscosity[v]  = 1.0/Re + Cs2*dx[v]*dx[v]*tensor.norm()*fd;
+      viscosity[v]  = 1.0/Re + std::sqrt(2.0)*Cs2*dx[v]*dx[v]*tensor.norm()*fd;
     }
 
     return viscosity;
