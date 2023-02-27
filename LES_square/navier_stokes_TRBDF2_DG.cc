@@ -2517,7 +2517,6 @@ namespace NS_TRBDF2 {
     /*--- parameters to find nearest boundary vertex (for calculation of y+) ---*/
     Triangulation<dim> serial_triangulation;
     std::map<typename Triangulation<dim>::active_cell_iterator, int> cell_to_nearest_boundary_point;
-    std::vector<std::vector<bool>> process_owns_boundary_point_all;
     std::map<int, int> owned_boundary_points;
     std::map<int, int> boundary_points_to_rank;
 
@@ -3869,6 +3868,10 @@ namespace NS_TRBDF2 {
 
   template<int dim>
   void NavierStokesProjection<dim>::initialize_nearest_boundary_point_mapping(){
+    owned_boundary_points.clear();
+    boundary_points_to_rank.clear();
+    cell_to_nearest_boundary_point.clear();
+    
     /*--- Assemble marked vertices of serial triangulation ---*/
     std::vector<bool> global_boundary_vertices(serial_triangulation.n_vertices(), false);
     for (const auto &face : serial_triangulation.active_face_iterators()){
@@ -4527,10 +4530,10 @@ namespace NS_TRBDF2 {
 
     verbose_cout << " initialize statistics points" << std::endl;
     initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
-    horizontal_wake_points   = initialize_profile_points(0.0, 0.01, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
-    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
-    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
-    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.01, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
+    horizontal_wake_points   = initialize_profile_points(0.0, 0.1, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
+    vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
+    vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
+    vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
 
     double time = t_0 + dt;
     unsigned int n = 1;
@@ -4547,16 +4550,18 @@ namespace NS_TRBDF2 {
       // read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
-      compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
+        std::cout << "compute y+" << std::endl;
+        compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
 
-      output_results(1);
+        output_results(1);
 
-      compute_pressure_avg_over_boundary(n);
-      compute_stress_avg_over_boundary(n, center, 2.0 * radius, y_start, y_start + height);
-      compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
-      compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
-      compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
-      compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
+        std::cout << "compute statistics" << std::endl;
+        compute_pressure_avg_over_boundary(n);
+        compute_stress_avg_over_boundary(n, center, 2.0 * radius, y_start, y_start + height);
+        compute_velocity_avg(n, horizontal_wake_points, avg_horizontal_velocity);
+        compute_velocity_avg(n, vertical_profile_points1, avg_vertical_velocity1);
+        compute_velocity_avg(n, vertical_profile_points2, avg_vertical_velocity2);
+        compute_velocity_avg(n, vertical_profile_points3, avg_vertical_velocity3);
     }
     while(std::abs(T - time) > 1e-10) {
       time += dt;
@@ -4698,6 +4703,15 @@ namespace NS_TRBDF2 {
       if(refinement_iterations > 0 && n % refinement_iterations == 0) {
         verbose_cout << "Refining mesh" << std::endl;
         refine_mesh();
+
+        initialize_nearest_boundary_point_mapping();
+
+        verbose_cout << " initialize statistics points" << std::endl;
+        initialize_points_around_obstacle(200, Point<dim>(center[0] - radius, center[1] - radius), 2.0 * radius);
+        horizontal_wake_points   = initialize_profile_points(0.0, 0.1, Point<dim>(center[0] + radius, 0.5 * height), Point<dim>(length, 0.5 * height));
+        vertical_profile_points1 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 1.05 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.05 * 2.0 * radius, height));
+        vertical_profile_points2 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 1.54 * 2.0 * radius, 0.0), Point<dim>(center[1] + 1.54 * 2.0 * radius, height));
+        vertical_profile_points3 = initialize_profile_points(0.5 * numbers::PI, 0.1, Point<dim>(center[0] + 2.02 * 2.0 * radius, 0.0), Point<dim>(center[1] + 2.02 * 2.0 * radius, height));
       }
       /*--- Modify the Reynolds number if desired ---*/
       if(modify_Reynolds) {
