@@ -265,6 +265,7 @@ namespace NS_TRBDF2 {
     double       Re;
     double       dt;
     bool         no_slip;
+    bool         import_mesh;
 
     /*--- Parameters of time-marching scheme ---*/
     double       gamma;
@@ -403,7 +404,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
-    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(true), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(true), import_mesh(false), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr() {}
 
 
@@ -412,7 +413,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator(RunTimeParameters::Data_Storage& data):
-    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip), import_mesh(data.import_mesh),
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(),
                                            vel_boundary_inflow(data.initial_time) {}
@@ -2150,7 +2151,7 @@ namespace NS_TRBDF2 {
        },
        1);
     }
-    else {
+    else if(import_mesh){
       ::MatrixFreeTools::compute_diagonal<dim, Number, VectorizedArray<Number>>
     (*(this->data),
      inverse_diagonal,
@@ -2706,7 +2707,37 @@ namespace NS_TRBDF2 {
     const unsigned int nlevels = triangulation.n_global_levels();
     mg_matrices.resize(0, nlevels - 1);
     for(unsigned int level = 0; level < nlevels; ++level) {
-      mg_matrices[level].set_dt(dt);
+        if(!import_mesh){
+            typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+            additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+            additional_data_mg.mapping_update_flags                = (update_gradients | update_JxW_values);
+            additional_data_mg.mapping_update_flags_inner_faces    = (update_gradients | update_JxW_values);
+            additional_data_mg.mapping_update_flags_boundary_faces = (update_gradients | update_JxW_values);
+            additional_data_mg.mg_level = level;
+
+            std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+            dof_handlers_mg.push_back(&dof_handler_velocity);
+            dof_handlers_mg.push_back(&dof_handler_pressure);
+            std::vector<const AffineConstraints<float>*> constraints_mg;
+            AffineConstraints<float> constraints_velocity_mg;
+            constraints_velocity_mg.clear();
+            constraints_velocity_mg.close();
+            constraints_mg.push_back(&constraints_velocity_mg);
+            AffineConstraints<float> constraints_pressure_mg;
+            constraints_pressure_mg.clear();
+            constraints_pressure_mg.close();
+            constraints_mg.push_back(&constraints_pressure_mg);
+
+            std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+            mg_mf_storage_level->reinit(MappingQ1<dim>(), dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+            const std::vector<unsigned int> tmp = {1};
+            mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
+        }
+        mg_matrices[level].set_dt(dt);
+
+        if(!import_mesh){
+            mg_matrices[level].set_NS_stage(2);
+        }
     }
 
     Linfty_error_per_cell_vel.reinit(triangulation.n_active_cells());
@@ -2872,36 +2903,38 @@ namespace NS_TRBDF2 {
     SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
 
     /*--- Build the preconditioner (as in step-37) ---*/
-    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
-      std::vector<QGauss<1>> quadratures;
-      quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
-      quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
+    if(import_mesh){
+        for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+            std::vector<QGauss<1>> quadratures;
+            quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
+            quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
 
-      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
-      dof_handlers_mg.push_back(&dof_handler_velocity);
-      dof_handlers_mg.push_back(&dof_handler_pressure);
+            std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+            dof_handlers_mg.push_back(&dof_handler_velocity);
+            dof_handlers_mg.push_back(&dof_handler_pressure);
 
-      std::vector<const AffineConstraints<float>*> constraints_mg;
-      AffineConstraints<float> constraints_velocity_mg;
-      constraints_velocity_mg.clear();
-      constraints_velocity_mg.close();
-      constraints_mg.push_back(&constraints_velocity_mg);
-      AffineConstraints<float> constraints_pressure_mg;
-      constraints_pressure_mg.clear();
-      constraints_pressure_mg.close();
-      constraints_mg.push_back(&constraints_pressure_mg);
+            std::vector<const AffineConstraints<float>*> constraints_mg;
+            AffineConstraints<float> constraints_velocity_mg;
+            constraints_velocity_mg.clear();
+            constraints_velocity_mg.close();
+            constraints_mg.push_back(&constraints_velocity_mg);
+            AffineConstraints<float> constraints_pressure_mg;
+            constraints_pressure_mg.clear();
+            constraints_pressure_mg.close();
+            constraints_mg.push_back(&constraints_pressure_mg);
 
-      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
-      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
-      additional_data_mg.mapping_update_flags                = (update_values | update_JxW_values);
-      additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_JxW_values );
-      additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_JxW_values );
-      additional_data_mg.mg_level                            = level;
+            typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+            additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+            additional_data_mg.mapping_update_flags                = (update_values | update_JxW_values);
+            additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_JxW_values );
+            additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_JxW_values );
+            additional_data_mg.mg_level                            = level;
 
-      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-      mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
-      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
-      mg_matrices[level].set_NS_stage(2);
+            std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+            mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+            mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
+            mg_matrices[level].set_NS_stage(2);
+        }
     }
 
     MGTransferMatrixFree<dim, float> mg_transfer;
@@ -2991,93 +3024,96 @@ namespace NS_TRBDF2 {
     /*--- Solve the system ---*/
     SolverControl solver_control(max_its, 1e-12*rhs_u.l2_norm());
     SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
+    if(import_mesh){
+        /*--- Build the preconditioner (as in step-37) ---*/
+        for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+        std::vector<QGauss<1>> quadratures;
+        quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
+        quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
 
-    /*--- Build the preconditioner (as in step-37) ---*/
-    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
-      std::vector<QGauss<1>> quadratures;
-      quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
-      quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
+        std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+        dof_handlers_mg.push_back(&dof_handler_velocity);
+        dof_handlers_mg.push_back(&dof_handler_pressure);
 
-      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
-      dof_handlers_mg.push_back(&dof_handler_velocity);
-      dof_handlers_mg.push_back(&dof_handler_pressure);
+        std::vector<const AffineConstraints<float>*> constraints_mg;
+        AffineConstraints<float> constraints_velocity_mg;
+        constraints_velocity_mg.clear();
+        constraints_velocity_mg.close();
+        constraints_mg.push_back(&constraints_velocity_mg);
+        AffineConstraints<float> constraints_pressure_mg;
+        constraints_pressure_mg.clear();
+        constraints_pressure_mg.close();
+        constraints_mg.push_back(&constraints_pressure_mg);
 
-      std::vector<const AffineConstraints<float>*> constraints_mg;
-      AffineConstraints<float> constraints_velocity_mg;
-      constraints_velocity_mg.clear();
-      constraints_velocity_mg.close();
-      constraints_mg.push_back(&constraints_velocity_mg);
-      AffineConstraints<float> constraints_pressure_mg;
-      constraints_pressure_mg.clear();
-      constraints_pressure_mg.close();
-      constraints_mg.push_back(&constraints_pressure_mg);
+        typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+        additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+        additional_data_mg.mapping_update_flags                = (update_values | update_gradients | update_JxW_values);
+        additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_gradients | update_JxW_values );
+        additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_gradients | update_JxW_values );
+        additional_data_mg.mg_level                            = level;
 
-      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
-      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
-      additional_data_mg.mapping_update_flags                = (update_values | update_gradients | update_JxW_values);
-      additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_gradients | update_JxW_values );
-      additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_gradients | update_JxW_values );
-      additional_data_mg.mg_level                            = level;
+        std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+        mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+        mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
+        mg_matrices[level].set_NS_stage(3);
+        }
 
-      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-      mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
-      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
-      mg_matrices[level].set_NS_stage(3);
+        MGTransferMatrixFree<dim, float> mg_transfer;
+        mg_transfer.build(dof_handler_velocity);
+
+        using SmootherType = PreconditionChebyshev<NavierStokesProjectionOperator<dim,
+                                                                                EquationData::degree_p,
+                                                                                EquationData::degree_p + 1,
+                                                                                EquationData::degree_p + 1,
+                                                                                EquationData::degree_p + 2,
+                                                                                LinearAlgebra::distributed::Vector<float>>,
+                                                LinearAlgebra::distributed::Vector<float>>;
+        mg::SmootherRelaxation<SmootherType, LinearAlgebra::distributed::Vector<float>> mg_smoother;
+        MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
+        smoother_data.resize(0, triangulation.n_global_levels() - 1);
+        for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+        if(level > 0) {
+            smoother_data[level].smoothing_range     = 15.0;
+            smoother_data[level].degree              = 3;
+            smoother_data[level].eig_cg_n_iterations = 10;
+        }
+        else {
+            smoother_data[0].smoothing_range     = 2e-2;
+            smoother_data[0].degree              = numbers::invalid_unsigned_int;
+            smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
+        }
+
+        mg_matrices[level].compute_diagonal();
+        smoother_data[level].preconditioner = mg_matrices[level].get_matrix_diagonal_inverse();
+        }
+        mg_smoother.initialize(mg_matrices, smoother_data);
+
+        PreconditionIdentity                                identity;
+        SolverCG<LinearAlgebra::distributed::Vector<float>> cg_mg(solver_control);
+        MGCoarseGridIterativeSolver<LinearAlgebra::distributed::Vector<float>,
+                                    SolverCG<LinearAlgebra::distributed::Vector<float>>,
+                                    NavierStokesProjectionOperator<dim,
+                                                                EquationData::degree_p,
+                                                                EquationData::degree_p + 1,
+                                                                EquationData::degree_p + 1,
+                                                                EquationData::degree_p + 2,
+                                                                LinearAlgebra::distributed::Vector<float>>,
+                                    PreconditionIdentity> mg_coarse(cg_mg, mg_matrices[0], identity);
+
+        mg::Matrix<LinearAlgebra::distributed::Vector<float>> mg_matrix(mg_matrices);
+
+        Multigrid<LinearAlgebra::distributed::Vector<float>> mg(mg_matrix, mg_coarse, mg_transfer, mg_smoother, mg_smoother);
+
+        PreconditionMG<dim,
+                    LinearAlgebra::distributed::Vector<float>,
+                    MGTransferMatrixFree<dim, float>> preconditioner(dof_handler_velocity, mg, mg_transfer);
+
+        /*--- Solve the system ---*/
+        cg.solve(navier_stokes_matrix, u_tmp, rhs_u, preconditioner);
     }
-
-    MGTransferMatrixFree<dim, float> mg_transfer;
-    mg_transfer.build(dof_handler_velocity);
-
-    using SmootherType = PreconditionChebyshev<NavierStokesProjectionOperator<dim,
-                                                                              EquationData::degree_p,
-                                                                              EquationData::degree_p + 1,
-                                                                              EquationData::degree_p + 1,
-                                                                              EquationData::degree_p + 2,
-                                                                              LinearAlgebra::distributed::Vector<float>>,
-                                               LinearAlgebra::distributed::Vector<float>>;
-    mg::SmootherRelaxation<SmootherType, LinearAlgebra::distributed::Vector<float>> mg_smoother;
-    MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
-    smoother_data.resize(0, triangulation.n_global_levels() - 1);
-    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
-      if(level > 0) {
-        smoother_data[level].smoothing_range     = 15.0;
-        smoother_data[level].degree              = 3;
-        smoother_data[level].eig_cg_n_iterations = 10;
-      }
-      else {
-        smoother_data[0].smoothing_range     = 2e-2;
-        smoother_data[0].degree              = numbers::invalid_unsigned_int;
-        smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
-      }
-
-      mg_matrices[level].compute_diagonal();
-      smoother_data[level].preconditioner = mg_matrices[level].get_matrix_diagonal_inverse();
+    else {
+        cg.solve(navier_stokes_matrix, u_tmp, rhs_u, PreconditionIdentity());
     }
-    mg_smoother.initialize(mg_matrices, smoother_data);
-
-    PreconditionIdentity                                identity;
-    SolverCG<LinearAlgebra::distributed::Vector<float>> cg_mg(solver_control);
-    MGCoarseGridIterativeSolver<LinearAlgebra::distributed::Vector<float>,
-                                SolverCG<LinearAlgebra::distributed::Vector<float>>,
-                                NavierStokesProjectionOperator<dim,
-                                                               EquationData::degree_p,
-                                                               EquationData::degree_p + 1,
-                                                               EquationData::degree_p + 1,
-                                                               EquationData::degree_p + 2,
-                                                               LinearAlgebra::distributed::Vector<float>>,
-                                PreconditionIdentity> mg_coarse(cg_mg, mg_matrices[0], identity);
-
-    mg::Matrix<LinearAlgebra::distributed::Vector<float>> mg_matrix(mg_matrices);
-
-    Multigrid<LinearAlgebra::distributed::Vector<float>> mg(mg_matrix, mg_coarse, mg_transfer, mg_smoother, mg_smoother);
-
-    PreconditionMG<dim,
-                   LinearAlgebra::distributed::Vector<float>,
-                   MGTransferMatrixFree<dim, float>> preconditioner(dof_handler_velocity, mg, mg_transfer);
-
-    /*--- Solve the system ---*/
-    pcout << "before cg solve" << std::endl;
-    cg.solve(navier_stokes_matrix, u_tmp, rhs_u, preconditioner);
   }
 
 
