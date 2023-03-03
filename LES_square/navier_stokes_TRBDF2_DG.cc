@@ -4569,7 +4569,7 @@ namespace NS_TRBDF2 {
       pcout << "Step = " << n << " Time = " << time << std::endl;
 
       /*--- compute artificial force for first step ---*/
-      compute_artificial_force(u_n);
+    //   compute_artificial_force(u_n);
 
       /*--- First stage of TR-BDF2 and we start by setting the proper flag ---*/
       TR_BDF2_stage = 1;
