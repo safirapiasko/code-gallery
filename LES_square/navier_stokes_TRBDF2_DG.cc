@@ -516,8 +516,7 @@ namespace NS_TRBDF2 {
       velocity and 1 for pressure). ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old(data, 0),
-                                                                   phi_old_extr(data, 0),
-                                                                   phi_force(data, 0);
+                                                                   phi_old_extr(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
       FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
                                                                    phi_y_plus(data, 2);
@@ -576,8 +575,7 @@ namespace NS_TRBDF2 {
       /*--- We first start by declaring the suitable instances to read already available quantities. ---*/
       FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0),
                                                                    phi_old(data, 0),
-                                                                   phi_int(data, 0),
-                                                                   phi_force(data, 0);
+                                                                   phi_int(data, 0);
       FEEvaluation<dim, fe_degree_p, n_q_points_1d_v, 1, Number>   phi_old_press(data, 1);
       FEEvaluation<dim, 0, n_q_points_1d_v, 1, Number>             phi_deltas(data, 2),
                                                                    phi_y_plus(data, 2);
@@ -2675,8 +2673,6 @@ namespace NS_TRBDF2 {
 
     void compute_velocity_avg(int n, std::vector<Point<dim>>& points, std::vector<Vector<double>>& avg_velocity);
 
-    void compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel);
-
     void compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length);
 
     /*--- Technical member to handle the various steps ---*/
@@ -3264,7 +3260,6 @@ namespace NS_TRBDF2 {
     matrix_free_storage->initialize_dof_vector(u_n_gamma, 0);
     matrix_free_storage->initialize_dof_vector(u_tmp, 0);
     matrix_free_storage->initialize_dof_vector(grad_pres_int, 0);
-    matrix_free_storage->initialize_dof_vector(artificial_force, 0);
 
     matrix_free_storage->initialize_dof_vector(pres_int, 1);
     matrix_free_storage->initialize_dof_vector(pres_n, 1);
@@ -4146,16 +4141,6 @@ namespace NS_TRBDF2 {
       output_drag << drag << std::endl;
     }
   }
-
-  template <int dim>
-  void NavierStokesProjection<dim>::compute_artificial_force(LinearAlgebra::distributed::Vector<double> & vel) {
-    // calculate uniform artificial force
-    double force = 0.1 * (1.0 - VectorTools::compute_mean_value(MappingQ1<dim>(), dof_handler_velocity, quadrature_velocity, vel, 0));
-
-    // interpolate force over domain
-    VectorTools::interpolate(dof_handler_velocity, Functions::ConstantFunction<dim>(Vector<double>({force, 0.0})), artificial_force);
-  }
-
 
   template <int dim>
   void NavierStokesProjection<dim>::compute_y_plus(LinearAlgebra::distributed::Vector<double> & vel, double lower_boundary, double upper_boundary, Point<dim> center, double object_length) {
