@@ -391,7 +391,7 @@ namespace NS_TRBDF2 {
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
     MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
-                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(), y_plus() {}
+                                           a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr() {}
 
 
   // We focus now on the constructor with runtime parameters storage
