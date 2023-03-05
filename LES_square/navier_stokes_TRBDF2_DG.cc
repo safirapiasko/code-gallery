@@ -4562,13 +4562,13 @@ namespace NS_TRBDF2 {
       n    = step_restart;
       time = time_restart;
 
-      // read_statistics_velocity(horizontal_wake_points, 0, avg_horizontal_velocity, "./" + saving_dir + "/out_vel_hor.dat");
-      // read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
-      // read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
-      // read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
+      read_statistics_velocity(horizontal_wake_points, 0, avg_horizontal_velocity, "./" + saving_dir + "/out_vel_hor.dat");
+      read_statistics_velocity(vertical_profile_points1, 1, avg_vertical_velocity1, "./" + saving_dir + "/out_vel_ver1.dat");
+      read_statistics_velocity(vertical_profile_points2, 1, avg_vertical_velocity2, "./" + saving_dir + "/out_vel_ver2.dat");
+      read_statistics_velocity(vertical_profile_points3, 1, avg_vertical_velocity3, "./" + saving_dir + "/out_vel_ver3.dat");
 
-      // read_statistics(obstacle_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
-      // read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
+      read_statistics(obstacle_points, avg_stress, "./" + saving_dir + "/avg_stress.dat");
+      read_statistics(obstacle_points, avg_pressure, "./" + saving_dir + "/avg_p.dat");
     }
     else {
       compute_y_plus(u_n, y_start, y_start + height, center, 2.0 * radius);
@@ -4706,7 +4706,7 @@ namespace NS_TRBDF2 {
       if(n % output_interval == 0) {
         verbose_cout << "Plotting Solution final" << std::endl;
         output_results(n);
-        // output_statistics(center);
+        output_statistics(center);
       }
       /*--- In case dt is not a multiple of T, we reduce dt in order to end up at T ---*/
       if(T - time < dt && T - time > 1e-10) {
@@ -4745,8 +4745,9 @@ namespace NS_TRBDF2 {
     }
 
     if(n % output_interval != 0) {
-      verbose_cout << "Plotting Solution final" << std::endl;
+      verbose_cout << "Plotting Solution final" << std::endl;ß
       output_results(n);
+      output_statistics(center);
     }
     if(refinement_iterations > 0) {
       for(unsigned int lev = 0; lev < triangulation.n_global_levels() - 1; ++ lev)
