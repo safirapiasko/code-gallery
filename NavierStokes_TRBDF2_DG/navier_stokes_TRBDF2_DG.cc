@@ -2417,7 +2417,9 @@ namespace NS_TRBDF2 {
     output_n_dofs_velocity("./" + data.dir + "/n_dofs_velocity.dat", std::ofstream::out),
     output_n_dofs_pressure("./" + data.dir + "/n_dofs_pressure.dat", std::ofstream::out),
     output_lift("./" + data.dir + "/lift.dat", std::ofstream::out),
-    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out) {
+    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out),
+    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out)  {
+
       if(EquationData::degree_p < 1) {
         pcout
         << " WARNING: The chosen pair of finite element spaces is not stable."
