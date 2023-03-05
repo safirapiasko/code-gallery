@@ -264,8 +264,9 @@ namespace NS_TRBDF2 {
   protected:
     double       Re;
     double       dt;
-    bool         no_slip;
+
     bool         import_mesh;
+
 
     /*--- Parameters of time-marching scheme ---*/
     double       gamma;
@@ -286,7 +287,7 @@ namespace NS_TRBDF2 {
     const double a22 = 0.5;
 
     /*--- Penalty method parameters, theta = 1 means SIP, while C_p and C_u are the penalization coefficients ---*/
-    const double theta_v = 0.0;
+    const double theta_v = 1.0;
     const double theta_p = 1.0;
     const double C_p     = 1.0*(fe_degree_p + 1)*(fe_degree_p + 1);
     const double C_u     = 1.0*(fe_degree_v + 1)*(fe_degree_v + 1);
@@ -383,19 +384,7 @@ namespace NS_TRBDF2 {
                                                   Vec&                                         dst,
                                                   const unsigned int&                          src,
                                                   const std::pair<unsigned int, unsigned int>& face_range) const;
-    void assemble_diagonal_cell_term_project_grad(const MatrixFree<dim, Number>&               data,
-                                                  Vec&                                         dst,
-                                                  const unsigned int&                          src,
-                                                  const std::pair<unsigned int, unsigned int>& cell_range) const;
-    void assemble_diagonal_face_term_project_grad(const MatrixFree<dim, Number>&               data,
-                                                  Vec&                                         dst,
-                                                  const unsigned int&                          src,
-                                                  const std::pair<unsigned int, unsigned int>& face_range) const {}
-    void assemble_diagonal_boundary_term_project_grad(const MatrixFree<dim, Number>&               data,
-                                                      Vec&                                         dst,
-                                                      const unsigned int&                          src,
-                                                      const std::pair<unsigned int, unsigned int>& face_range) const {}
- };
+};
 
 
   // We start with the default constructor. It is important for MultiGrid, so it is fundamental
@@ -404,7 +393,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
-    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(true), import_mesh(false), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
+  MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(),  import_mesh(false), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr() {}
 
 
@@ -413,7 +402,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator(RunTimeParameters::Data_Storage& data):
-    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip), import_mesh(data.import_mesh),
+  MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), import_mesh(data.import_mesh),
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(),
                                            vel_boundary_inflow(data.initial_time) {}
@@ -713,9 +702,9 @@ namespace NS_TRBDF2 {
         phi.reinit(face);
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
-        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
-                                 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
+        
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -738,10 +727,9 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_int_m = outer_product(u_int_m, phi_old_extr.get_value(q));
-
-          const auto& lambda                 = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+          const auto& lambda                 = (boundary_id == 1 || boundary_id == 3) ?
                                                0.0 : std::abs(scalar_product(phi_old_extr.get_value(q), n_plus));
-          const auto& lambda_old             = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+          const auto& lambda_old             = (boundary_id == 1 || boundary_id == 3) ?
                                                0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
           const auto& jump_u_old             = phi_old.get_value(q) - u_int_m;
 
@@ -775,9 +763,9 @@ namespace NS_TRBDF2 {
         phi.reinit(face);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
                                  0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -800,12 +788,11 @@ namespace NS_TRBDF2 {
             }
           }
           const auto& tensor_product_u_m       = outer_product(u_m, phi_int_extr.get_value(q));
-
-          const auto& lambda                   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+          const auto& lambda                   = (boundary_id == 1 || boundary_id == 3) ?
                                                  0.0 : std::abs(scalar_product(phi_int_extr.get_value(q), n_plus));
-          const auto& lambda_old               = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+          const auto& lambda_old               = (boundary_id == 1 || boundary_id == 3) ?
                                                  0.0 : std::abs(scalar_product(phi_old.get_value(q), n_plus));
-          const auto& lambda_int               = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+          const auto& lambda_int               = (boundary_id == 1 || boundary_id == 3) ?
                                                  0.0 : std::abs(scalar_product(phi_int.get_value(q), n_plus));
           const auto& jump_u_old               = phi_old.get_value(q) - u_m;
           const auto& jump_u_int               = phi_int.get_value(q) - u_m;
@@ -1175,7 +1162,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1235,7 +1222,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1365,7 +1352,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1 || (!no_slip && boundary_id == 3)) {
+      if(boundary_id == 1) {
         phi.reinit(face);
         phi.gather_evaluate(src, true, true);
 
@@ -2064,49 +2051,6 @@ namespace NS_TRBDF2 {
   }
 
 
-// Now we consider the pressure related bilinear forms. We first assemble diagonal cell term for the pressure
-  //
-  template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
-  void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
-  assemble_diagonal_cell_term_project_grad(const MatrixFree<dim, Number>&               data,
-                                           Vec&                                         dst,
-                                           const unsigned int&                          ,
-                                           const std::pair<unsigned int, unsigned int>& cell_range) const {
-    FEEvaluation<dim, fe_degree_v, n_q_points_1d_v, dim, Number> phi(data, 0);
-
-    AlignedVector<Tensor<1, dim, VectorizedArray<Number>>> diagonal(phi.dofs_per_component);
-    /*--- Build a vector of ones to be tested (here we will see the velocity as a whole vector, since
-                                               dof_handler_velocity is vectorial and so the dof values are vectors). ---*/
-    Tensor<1, dim, VectorizedArray<Number>> tmp;
-    for(unsigned int d = 0; d < dim; ++d)
-      tmp[d] = make_vectorized_array<Number>(1.0);
-
-    /*--- Loop over all cells in the range ---*/
-    for(unsigned int cell = cell_range.first; cell < cell_range.second; ++cell) {
-      phi.reinit(cell);
-
-      /*--- Loop over all dofs ---*/
-      for(unsigned int i = 0; i < phi.dofs_per_component; ++i) {
-        for(unsigned int j = 0; j < phi.dofs_per_component; ++j)
-          phi.submit_dof_value(Tensor<1, dim, VectorizedArray<Number>>(), j); /*--- Set all dofs to zero ---*/
-        phi.submit_dof_value(tmp, i); /*--- Set dof i equal to one ---*/
-        phi.evaluate(EvaluationFlags::values);
-
-        /*--- Loop over quadrature points ---*/
-        for(unsigned int q = 0; q < phi.n_q_points; ++q)
-          phi.submit_value(phi.get_value(q), q);
-
-        phi.integrate(EvaluationFlags::values);
-        diagonal[i] = phi.get_dof_value(i);
-      }
-      for(unsigned int i = 0; i < phi.dofs_per_component; ++i)
-        phi.submit_dof_value(diagonal[i], i);
-
-      phi.distribute_local_to_global(dst);
-    }
-  }
-
-
   // Put together all previous steps. We create a dummy auxliary vector that serves for the src input argument in
   // the previous functions that as we have seen before is unused. Then everything is done by the 'loop' function
   // and it is saved in the field 'inverse_diagonal_entries' already present in the base class. Anyway since there is
@@ -2115,8 +2059,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   void NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   compute_diagonal() {
-    Assert(NS_stage > 0, ExcInternalError());
-    Assert(NS_stage <= 3, ExcInternalError());
+    Assert(NS_stage == 1 || NS_stage == 2, ExcInternalError());
 
     this->inverse_diagonal_entries.reset(new DiagonalMatrix<Vec>());
     auto& inverse_diagonal = this->inverse_diagonal_entries->get_vector();
@@ -2151,21 +2094,6 @@ namespace NS_TRBDF2 {
        },
        1);
     }
-    else if(import_mesh){
-      ::MatrixFreeTools::compute_diagonal<dim, Number, VectorizedArray<Number>>
-    (*(this->data),
-     inverse_diagonal,
-     [&](const auto& data, auto& dst, const auto& src, const auto& cell_range) {
-       (this->assemble_diagonal_cell_term_project_grad)(data, dst, src, cell_range);
-     },
-     [&](const auto& data, auto& dst, const auto& src, const auto& face_range) {
-       (this->assemble_diagonal_face_term_project_grad)(data, dst, src, face_range);
-     },
-     [&](const auto& data, auto& dst, const auto& src, const auto& boundary_range) {
-       (this->assemble_diagonal_boundary_term_project_grad)(data, dst, src, boundary_range);
-     },
-     0);
-    }
 
     for(unsigned int i = 0; i < inverse_diagonal.locally_owned_size(); ++i) {
       Assert(inverse_diagonal.local_element(i) != 0.0,
@@ -2173,7 +2101,6 @@ namespace NS_TRBDF2 {
       inverse_diagonal.local_element(i) = 1.0/inverse_diagonal.local_element(i);
     }
   }
-
 
   // @sect{The <code>NavierStokesProjection</code> class}
 
@@ -2335,7 +2262,6 @@ namespace NS_TRBDF2 {
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
     bool         import_mesh;
-    bool         no_slip;
 
     std::string  saving_dir;
 
@@ -2399,7 +2325,6 @@ namespace NS_TRBDF2 {
     tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     import_mesh(data.import_mesh),
-    no_slip(data.no_slip),
     square_cylinder(data.square_cylinder),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
@@ -2418,7 +2343,9 @@ namespace NS_TRBDF2 {
     output_n_dofs_velocity("./" + data.dir + "/n_dofs_velocity.dat", std::ofstream::out),
     output_n_dofs_pressure("./" + data.dir + "/n_dofs_pressure.dat", std::ofstream::out),
     output_lift("./" + data.dir + "/lift.dat", std::ofstream::out),
-    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out) {
+    output_drag("./" + data.dir + "/drag.dat", std::ofstream::out),
+    output_lipschitz("./" + data.dir + "/lipschitz.dat", std::ofstream::out)  {
+
       if(EquationData::degree_p < 1) {
         pcout
         << " WARNING: The chosen pair of finite element spaces is not stable."
@@ -2747,37 +2674,33 @@ namespace NS_TRBDF2 {
     const unsigned int nlevels = triangulation.n_global_levels();
     mg_matrices.resize(0, nlevels - 1);
     for(unsigned int level = 0; level < nlevels; ++level) {
-        if(!import_mesh){
-            typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
-            additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
-            additional_data_mg.mapping_update_flags                = (update_gradients | update_JxW_values);
-            additional_data_mg.mapping_update_flags_inner_faces    = (update_gradients | update_JxW_values);
-            additional_data_mg.mapping_update_flags_boundary_faces = (update_gradients | update_JxW_values);
-            additional_data_mg.mg_level = level;
 
-            std::vector<const DoFHandler<dim>*> dof_handlers_mg;
-            dof_handlers_mg.push_back(&dof_handler_velocity);
-            dof_handlers_mg.push_back(&dof_handler_pressure);
-            std::vector<const AffineConstraints<float>*> constraints_mg;
-            AffineConstraints<float> constraints_velocity_mg;
-            constraints_velocity_mg.clear();
-            constraints_velocity_mg.close();
-            constraints_mg.push_back(&constraints_velocity_mg);
-            AffineConstraints<float> constraints_pressure_mg;
-            constraints_pressure_mg.clear();
-            constraints_pressure_mg.close();
-            constraints_mg.push_back(&constraints_pressure_mg);
+      typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
+      additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
+      additional_data_mg.mapping_update_flags                = (update_gradients | update_JxW_values);
+      additional_data_mg.mapping_update_flags_inner_faces    = (update_gradients | update_JxW_values);
+      additional_data_mg.mapping_update_flags_boundary_faces = (update_gradients | update_JxW_values);
+      additional_data_mg.mg_level = level;
 
-            std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-            mg_mf_storage_level->reinit(MappingQ1<dim>(), dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
-            const std::vector<unsigned int> tmp = {1};
-            mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
-        }
-        mg_matrices[level].set_dt(dt);
+      std::vector<const DoFHandler<dim>*> dof_handlers_mg;
+      dof_handlers_mg.push_back(&dof_handler_velocity);
+      dof_handlers_mg.push_back(&dof_handler_pressure);
+      std::vector<const AffineConstraints<float>*> constraints_mg;
+      AffineConstraints<float> constraints_velocity_mg;
+      constraints_velocity_mg.clear();
+      constraints_velocity_mg.close();
+      constraints_mg.push_back(&constraints_velocity_mg);
+      AffineConstraints<float> constraints_pressure_mg;
+      constraints_pressure_mg.clear();
+      constraints_pressure_mg.close();
+      constraints_mg.push_back(&constraints_pressure_mg);
 
-        if(!import_mesh){
-            mg_matrices[level].set_NS_stage(2);
-        }
+      std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
+      mg_mf_storage_level->reinit(MappingQ1<dim>(), dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
+      const std::vector<unsigned int> tmp = {1};
+      mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);  
+      mg_matrices[level].set_dt(dt);
+      mg_matrices[level].set_NS_stage(2);
     }
 
     Linfty_error_per_cell_vel.reinit(triangulation.n_active_cells());
@@ -2943,39 +2866,6 @@ namespace NS_TRBDF2 {
     SolverCG<LinearAlgebra::distributed::Vector<double>> cg(solver_control);
 
     /*--- Build the preconditioner (as in step-37) ---*/
-    if(import_mesh){
-        for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
-            std::vector<QGauss<1>> quadratures;
-            quadratures.push_back(QGauss<1>(EquationData::degree_p + 2));
-            quadratures.push_back(QGauss<1>(EquationData::degree_p + 1));
-
-            std::vector<const DoFHandler<dim>*> dof_handlers_mg;
-            dof_handlers_mg.push_back(&dof_handler_velocity);
-            dof_handlers_mg.push_back(&dof_handler_pressure);
-
-            std::vector<const AffineConstraints<float>*> constraints_mg;
-            AffineConstraints<float> constraints_velocity_mg;
-            constraints_velocity_mg.clear();
-            constraints_velocity_mg.close();
-            constraints_mg.push_back(&constraints_velocity_mg);
-            AffineConstraints<float> constraints_pressure_mg;
-            constraints_pressure_mg.clear();
-            constraints_pressure_mg.close();
-            constraints_mg.push_back(&constraints_pressure_mg);
-
-            typename MatrixFree<dim, float>::AdditionalData additional_data_mg;
-            additional_data_mg.tasks_parallel_scheme               = MatrixFree<dim, float>::AdditionalData::none;
-            additional_data_mg.mapping_update_flags                = (update_values | update_JxW_values);
-            additional_data_mg.mapping_update_flags_inner_faces    = (update_values | update_JxW_values );
-            additional_data_mg.mapping_update_flags_boundary_faces = (update_values | update_JxW_values );
-            additional_data_mg.mg_level                            = level;
-
-            std::shared_ptr<MatrixFree<dim, float>> mg_mf_storage_level(new MatrixFree<dim, float>());
-            mg_mf_storage_level->reinit(dof_handlers_mg, constraints_mg, quadratures, additional_data_mg);
-            mg_matrices[level].initialize(mg_mf_storage_level, tmp, tmp);
-            mg_matrices[level].set_NS_stage(2);
-        }
-    }
 
     MGTransferMatrixFree<dim, float> mg_transfer;
     mg_transfer.build(dof_handler_pressure);
@@ -3098,30 +2988,32 @@ namespace NS_TRBDF2 {
         mg_matrices[level].set_NS_stage(3);
         }
 
-        MGTransferMatrixFree<dim, float> mg_transfer;
-        mg_transfer.build(dof_handler_velocity);
+    cg.solve(navier_stokes_matrix, u_tmp, rhs_u, PreconditionIdentity());
 
-        using SmootherType = PreconditionChebyshev<NavierStokesProjectionOperator<dim,
-                                                                                EquationData::degree_p,
-                                                                                EquationData::degree_p + 1,
-                                                                                EquationData::degree_p + 1,
-                                                                                EquationData::degree_p + 2,
-                                                                                LinearAlgebra::distributed::Vector<float>>,
-                                                LinearAlgebra::distributed::Vector<float>>;
-        mg::SmootherRelaxation<SmootherType, LinearAlgebra::distributed::Vector<float>> mg_smoother;
-        MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
-        smoother_data.resize(0, triangulation.n_global_levels() - 1);
-        for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
-        if(level > 0) {
-            smoother_data[level].smoothing_range     = 15.0;
-            smoother_data[level].degree              = 3;
-            smoother_data[level].eig_cg_n_iterations = 10;
-        }
-        else {
-            smoother_data[0].smoothing_range     = 2e-2;
-            smoother_data[0].degree              = numbers::invalid_unsigned_int;
-            smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
-        }
+    MGTransferMatrixFree<dim, float> mg_transfer;
+    mg_transfer.build(dof_handler_velocity);
+
+    using SmootherType = PreconditionChebyshev<NavierStokesProjectionOperator<dim,
+                                                                              EquationData::degree_p,
+                                                                              EquationData::degree_p + 1,
+                                                                              EquationData::degree_p + 1,
+                                                                              EquationData::degree_p + 2,
+                                                                              LinearAlgebra::distributed::Vector<float>>,
+                                               LinearAlgebra::distributed::Vector<float>>;
+    mg::SmootherRelaxation<SmootherType, LinearAlgebra::distributed::Vector<float>> mg_smoother;
+    MGLevelObject<typename SmootherType::AdditionalData> smoother_data;
+    smoother_data.resize(0, triangulation.n_global_levels() - 1);
+    for(unsigned int level = 0; level < triangulation.n_global_levels(); ++level) {
+      if(level > 0) {
+        smoother_data[level].smoothing_range     = 15.0;
+        smoother_data[level].degree              = 3;
+        smoother_data[level].eig_cg_n_iterations = 10;
+      }
+      else {
+        smoother_data[0].smoothing_range     = 2e-2;
+        smoother_data[0].degree              = numbers::invalid_unsigned_int;
+        smoother_data[0].eig_cg_n_iterations = mg_matrices[0].m();
+      }
 
         mg_matrices[level].compute_diagonal();
         smoother_data[level].preconditioner = mg_matrices[level].get_matrix_diagonal_inverse();
