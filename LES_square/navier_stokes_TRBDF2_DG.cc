@@ -268,7 +268,6 @@ namespace NS_TRBDF2 {
   protected:
     double       Re;
     double       dt;
-    bool         no_slip;
 
     /*--- Parameters of time-marching scheme ---*/
     double       gamma;
@@ -411,7 +410,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator():
-    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), no_slip(true), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(), dt(), gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(), y_plus() {}
 
 
@@ -420,7 +419,7 @@ namespace NS_TRBDF2 {
   template<int dim, int fe_degree_p, int fe_degree_v, int n_q_points_1d_p, int n_q_points_1d_v, typename Vec>
   NavierStokesProjectionOperator<dim, fe_degree_p, fe_degree_v, n_q_points_1d_p, n_q_points_1d_v, Vec>::
   NavierStokesProjectionOperator(RunTimeParameters::Data_Storage& data):
-    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt), no_slip(data.no_slip),
+    MatrixFreeOperators::Base<dim, Vec>(), Re(data.Reynolds), dt(data.dt),
                                            gamma(2.0 - std::sqrt(2.0)), a31((1.0 - gamma)/(2.0*(2.0 - gamma))),
                                            a32(a31), a33(1.0/(2.0 - gamma)), TR_BDF2_stage(1), NS_stage(1), u_extr(), deltas(), y_plus(),
                                            vel_boundary_inflow(data.initial_time),
@@ -833,8 +832,8 @@ namespace NS_TRBDF2 {
 
         const auto boundary_id = data.get_boundary_id(face); /*--- Get the id in order to impose the proper boundary condition ---*/
         
-        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ? 0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -907,9 +906,9 @@ namespace NS_TRBDF2 {
         phi_y_plus.gather_evaluate(src[5], EvaluationFlags::values);
 
         const auto boundary_id = data.get_boundary_id(face);
-        const auto coef_jump   = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ?
+        const auto coef_jump   = (boundary_id == 1 || boundary_id == 3) ?
                                  0.0 : C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
-        const double aux_coeff = (boundary_id == 1 || (!no_slip && boundary_id == 3)) ? 0.0 : 1.0;
+        const double aux_coeff = (boundary_id == 1 || boundary_id == 3) ? 0.0 : 1.0;
 
         /*--- Now we loop over all the quadrature points to compute the integrals ---*/
         for(unsigned int q = 0; q < phi.n_q_points; ++q) {
@@ -1376,7 +1375,7 @@ namespace NS_TRBDF2 {
 
         /*--- The application of the mirror principle is not so trivial because we have a Dirichlet condition
               on a single component for the outflow; so we distinguish the two cases ---*/
-        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1459,7 +1458,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1 && (boundary_id != 3 || no_slip)) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Now we loop over all quadrature points ---*/
@@ -1602,7 +1601,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1|| (!no_slip && boundary_id == 3)) {
+      if(boundary_id == 1) {
         phi.reinit(face);
         phi.gather_evaluate(src, true, true);
 
@@ -2072,7 +2071,7 @@ namespace NS_TRBDF2 {
         const auto boundary_id = data.get_boundary_id(face);
         const auto coef_jump   = C_u*std::abs((phi.get_normal_vector(0) * phi.inverse_jacobian(0))[dim - 1]);
 
-        if(boundary_id != 1) {
+        if(boundary_id != 1 && boundary_id != 3) {
           const double coef_trasp = 0.0;
 
           /*--- Loop over all dofs ---*/
@@ -2390,7 +2389,7 @@ namespace NS_TRBDF2 {
     for(unsigned int face = face_range.first; face < face_range.second; ++face) {
       const auto boundary_id = data.get_boundary_id(face);
 
-      if(boundary_id == 1) {
+      if(boundary_id == 1 || boundary_id == 3) {
         phi.reinit(face);
 
         const auto coef_jump = C_p*std::abs((phi.get_normal_vector(0)*phi.inverse_jacobian(0))[dim - 1]);
@@ -2707,7 +2706,6 @@ namespace NS_TRBDF2 {
     unsigned int min_loc_refinements;
     unsigned int refinement_iterations;
     bool         import_mesh;
-    bool         no_slip;
 
     std::string  saving_dir;
 
@@ -2775,7 +2773,6 @@ namespace NS_TRBDF2 {
     tolerance_fixed_point(data.tolerance_fixed_point),
     n_refines(data.n_refines),
     import_mesh(data.import_mesh),
-    no_slip(data.no_slip),
     max_loc_refinements(data.max_loc_refinements),
     min_loc_refinements(data.min_loc_refinements),
     refinement_iterations(data.refinement_iterations),
@@ -3909,7 +3906,7 @@ namespace NS_TRBDF2 {
     /*--- Assemble marked vertices of serial triangulation ---*/
     std::vector<bool> global_boundary_vertices(serial_triangulation.n_vertices(), false);
     for (const auto &face : serial_triangulation.active_face_iterators()){
-      if(face->at_boundary() && ((no_slip && face->boundary_id() == 3) || face->boundary_id() == 2)){
+      if(face->at_boundary() && face->boundary_id() == 2){
         for(unsigned int i = 0; i < face->n_vertices(); i++){
           if(!global_boundary_vertices[face->vertex_index(i)] && GridTools::find_active_cell_around_point(triangulation, face->vertex(i)) != triangulation.end() &&
               GridTools::find_active_cell_around_point(triangulation, face->vertex(i))->is_locally_owned()){
