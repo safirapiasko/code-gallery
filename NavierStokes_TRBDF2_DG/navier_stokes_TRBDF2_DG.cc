@@ -3977,6 +3977,7 @@ namespace NS_TRBDF2 {
       if(n % output_interval == 0) {
         verbose_cout << "Plotting Solution final" << std::endl;
         output_results(n);
+        output_statistics(center);
       }
       /*--- In case dt is not a multiple of T, we reduce dt in order to end up at T ---*/
       if(T - time < dt && T - time > 1e-10) {
@@ -4000,6 +4001,7 @@ namespace NS_TRBDF2 {
     if(n % output_interval != 0) {
       verbose_cout << "Plotting Solution final" << std::endl;
       output_results(n);
+      output_statistics(center);
     }
     if(refinement_iterations > 0) {
       for(unsigned int lev = 0; lev < triangulation.n_global_levels() - 1; ++ lev)
